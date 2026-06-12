@@ -1,0 +1,2028 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIFO FAFO</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-deep:#1c1209;--bg-card:#2b1e0e;--bg-surface:#352614;--bg-hover:#43300e;
+  --accent:#c8956c;--accent2:#e8b86d;--accent3:#7db87a;--accent4:#e07070;
+  --text:#f0e6d3;--text-muted:#a8917a;--border:#5c3e1e;--radius:14px;
+  --blue:#5b9bd5;--green:#7db87a;--red:#e07070;--amber:#e8b86d;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:var(--bg-deep);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(1px 1px at 10% 15%,#e8c89844 0%,transparent 100%),radial-gradient(1.5px 1.5px at 55% 10%,#e8b86d33 0%,transparent 100%),radial-gradient(1px 1px at 90% 25%,#c8956c44 0%,transparent 100%),radial-gradient(1px 1px at 20% 75%,#e8c89833 0%,transparent 100%);pointer-events:none;z-index:0}
+
+/* ── NAV ── */
+.main-nav{position:relative;z-index:20;display:flex;border-bottom:2px solid var(--border);background:var(--bg-card)}
+.nav-btn{flex:1;padding:13px 6px;background:none;border:none;color:var(--text-muted);font-family:'Nunito',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;border-bottom:3px solid transparent;margin-bottom:-2px}
+.nav-btn.active{color:var(--accent2);border-bottom-color:var(--accent2)}
+.nav-btn:hover:not(.active){color:var(--accent)}
+
+/* ── SCREENS ── */
+.screen{display:none;position:relative;z-index:5}
+.screen.active{display:block}
+
+/* ── SETUP ── */
+.setup-wrap{max-width:460px;margin:40px auto;padding:0 16px}
+.setup-card{background:var(--bg-card);border:1.5px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center;margin-bottom:12px}
+.setup-card h2{font-family:'Cinzel Decorative',cursive;font-size:1.05rem;color:var(--accent2);margin-bottom:6px}
+.cat-anim{font-size:3rem;display:block;margin-bottom:8px;animation:floatCat 3.5s ease-in-out infinite}
+@keyframes floatCat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.sub{color:var(--text-muted);font-size:.83rem;font-style:italic;margin-bottom:22px}
+.slabel{display:block;font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.sopts{display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.sopt{padding:8px 16px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg-surface);color:var(--text-muted);font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s}
+.sopt.sel{background:linear-gradient(135deg,#7a4a1e,var(--accent));border-color:transparent;color:#fff}
+.sopt:hover:not(.sel){border-color:var(--accent);color:var(--accent)}
+.sinput{width:100%;padding:9px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg-surface);color:var(--text);font-family:'Nunito',sans-serif;font-size:.9rem;margin-bottom:20px;outline:none}
+.sinput:focus{border-color:var(--accent)}
+.btn-start{width:100%;padding:13px;background:linear-gradient(135deg,#7a4a1e,var(--accent2));border:none;border-radius:10px;color:#1c0f05;font-family:'Nunito',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-start:hover{filter:brightness(1.1);transform:translateY(-1px)}
+
+/* ── GAME HEADER ── */
+.ghdr{padding:10px 14px;background:var(--bg-card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;position:sticky;top:0;z-index:30}
+.gtitle{font-family:'Cinzel Decorative',cursive;font-size:1rem;background:linear-gradient(135deg,#e8b86d,#c8956c,#e07070);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.turn-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pbadge{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:20px;border:1px solid}
+.pb-mattino{background:#f59e0b22;color:var(--accent2);border-color:#f59e0b44}
+.pb-pomeriggio{background:#34d39922;color:var(--accent3);border-color:#34d39944}
+.pb-sera{background:#c8956c22;color:var(--accent);border-color:#c8956c44}
+.tnum{font-family:'Cinzel Decorative',cursive;font-size:.9rem;color:var(--accent2)}
+.bsm{display:inline-block;border-radius:20px;padding:2px 8px;font-size:.68rem;font-weight:700}
+.bg{background:#7db87a22;color:var(--accent3);border:1px solid #7db87a44}
+.bb{background:#5b9bd522;color:var(--blue);border:1px solid #5b9bd544}
+.ba{background:#e8b86d22;color:var(--accent2);border:1px solid #e8b86d44}
+.br{background:#e0707022;color:var(--accent4);border:1px solid #e0707044}
+.bp{background:#c8956c22;color:var(--accent);border:1px solid #c8956c44}
+.btn-menu{font-size:.7rem;padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-muted);cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700;transition:all .2s}
+.btn-menu:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── LAYOUT ── */
+.glayout{display:grid;grid-template-columns:1fr 260px;gap:0}
+@media(max-width:750px){.glayout{grid-template-columns:1fr}}
+.gmain{padding:10px;overflow-y:auto;max-height:calc(100vh - 52px)}
+.gside{background:var(--bg-card);border-left:1px solid var(--border);padding:10px;overflow-y:auto;max-height:calc(100vh - 52px)}
+@media(max-width:750px){.gmain,.gside{max-height:none}}
+
+/* ── PANELS ── */
+.panel{background:var(--bg-surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:11px;margin-bottom:10px}
+.ptitle{font-family:'Cinzel Decorative',cursive;font-size:.68rem;color:var(--accent);margin-bottom:9px;letter-spacing:.05em;text-transform:uppercase}
+
+/* ── HOUSE SVG ── */
+.house-wrap{position:relative;width:100%;max-width:400px;margin:0 auto}
+.house-svg-wrap{position:relative;width:100%;padding-bottom:100%}
+.house-svg-wrap svg{position:absolute;inset:0;width:100%;height:100%}
+
+/* ── PLAYER CARDS ── */
+.pbox{border-radius:10px;padding:10px;border:1.5px solid var(--border);margin-bottom:8px;transition:border-color .2s,background .2s}
+.pbox.active-turn{border-color:var(--accent2);background:var(--bg-hover)}
+.pbox.you-box{border-color:var(--accent3)55}
+.pbox.ai-box{border-color:var(--blue)55}
+.pbox.heafy-box{border-color:var(--accent)55;background:var(--bg-hover)}
+.pname-row{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.pname{font-weight:700;font-size:.85rem}
+.ppts{margin-left:auto;font-family:'Cinzel Decorative',cursive;font-size:.95rem;color:var(--accent2)}
+.ppts span{font-size:.58rem;color:var(--text-muted);font-family:'Nunito',sans-serif}
+.phand{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px}
+.rtok{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.68rem;background:var(--bg-card);border:1px solid var(--border)}
+.counter-wrap{display:flex;align-items:center;gap:4px;margin-top:4px}
+.cdot{width:9px;height:9px;border-radius:50%;background:var(--bg-card);border:1px solid var(--border)}
+.cdot.filled{background:var(--accent4)}
+
+/* ── FLOW BUILDER ── */
+.flow-slots{display:flex;gap:5px;margin:8px 0;flex-wrap:nowrap;overflow-x:auto}
+.fslot{flex-shrink:0;width:56px;height:56px;border-radius:9px;border:2px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;position:relative}
+.fslot.filled{border-style:solid}
+.fslot.filled:hover{filter:brightness(1.2)}
+.fslot-n{position:absolute;top:2px;left:4px;font-size:.52rem;color:var(--text-muted)}
+.fslot-lbl{font-size:.75rem;font-weight:700}
+.fslot-sub{font-size:.52rem;color:var(--text-muted)}
+.fslot.fa{border-color:var(--blue)88}
+.fslot.fb{border-color:var(--green)88}
+.fslot.fc{border-color:var(--red)88}
+.fslot.fj{border-color:var(--amber)88}
+.fslot.filled.fa{border-color:var(--blue);background:#5b9bd511;color:var(--blue)}
+.fslot.filled.fb{border-color:var(--green);background:#7db87a11;color:var(--green)}
+.fslot.filled.fc{border-color:var(--red);background:#e0707011;color:var(--red)}
+.fslot.filled.fj{border-color:var(--amber);background:#e8b86d11;color:var(--amber)}
+.farrow{color:var(--text-muted);font-size:.75rem;align-self:center;flex-shrink:0}
+
+.cpicker{margin-top:8px}
+.cg-title{font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;margin-top:8px}
+.cg-a .cg-title{color:var(--blue)}
+.cg-b .cg-title{color:var(--green)}
+.cg-c .cg-title{color:var(--red)}
+.cg-j .cg-title{color:var(--amber)}
+.copts{display:flex;gap:5px;flex-wrap:wrap}
+.copt{padding:5px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg-card);font-size:.72rem;font-weight:700;cursor:pointer;transition:all .15s;font-family:'Nunito',sans-serif;line-height:1.3;text-align:center}
+.cg-a .copt{border-color:var(--blue)44;color:var(--blue)}
+.cg-b .copt{border-color:var(--green)44;color:var(--green)}
+.cg-c .copt{border-color:var(--red)44;color:var(--red)}
+.cg-j .copt{border-color:var(--amber)44;color:var(--amber)}
+.copt:hover,.copt.csel{background:var(--bg-hover);border-color:var(--accent2);color:var(--accent2)}
+.copt.placed{opacity:.3;cursor:not-allowed}
+
+.btn-flow{width:100%;padding:10px;background:linear-gradient(135deg,#7a4a1e,var(--accent2));border:none;border-radius:9px;color:#1c0f05;font-family:'Nunito',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;margin-top:10px;transition:all .2s}
+.btn-flow:hover{filter:brightness(1.1)}
+.btn-flow:disabled{opacity:.35;cursor:not-allowed;filter:none}
+
+/* ── LOG ── */
+.logbox{max-height:220px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.le{font-size:.76rem;padding:4px 0;border-bottom:1px solid #ffffff06;line-height:1.55}
+.le.sep{border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:2px}
+.ly{color:var(--accent3)}
+.lai{color:var(--blue)}
+.lh{color:var(--accent)}
+.lw{color:var(--accent4)}
+.lp{color:var(--accent2);font-weight:700}
+.lm{color:var(--text-muted)}
+
+/* ── MOOD QUEUE ── */
+.mq-row{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;margin-bottom:2px}
+.mq-row.mq-active{background:var(--bg-hover);border:1px solid var(--accent)66}
+.mq-row:not(.mq-active){border:1px solid transparent}
+
+/* ── RESOLVE PANEL ── */
+.resolve-panel{background:var(--bg-card);border:1.5px solid var(--accent2);border-radius:var(--radius);padding:14px;margin-bottom:10px}
+.resolve-title{font-family:'Cinzel Decorative',cursive;font-size:.72rem;color:var(--accent2);margin-bottom:10px}
+.step-msg{font-size:.82rem;padding:6px 10px;border-radius:8px;margin-bottom:5px;line-height:1.55;border-left:3px solid var(--border)}
+.step-msg.sm-heafy{border-color:var(--accent);background:#c8956c0c}
+.step-msg.sm-you{border-color:var(--accent3);background:#7db87a0c}
+.step-msg.sm-ai{border-color:var(--blue);background:#5b9bd50c}
+.step-msg.sm-warn{border-color:var(--accent4);background:#e070700c}
+.step-msg.sm-pts{border-color:var(--accent2);background:#e8b86d0c;font-weight:700}
+.step-msg.sm-info{border-color:var(--border);background:var(--bg-surface)}
+.btn-next-step{width:100%;padding:9px;background:var(--bg-surface);border:1.5px solid var(--accent2);border-radius:9px;color:var(--accent2);font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;margin-top:8px;transition:all .2s}
+.btn-next-step:hover{background:var(--bg-hover)}
+
+/* ── MODAL ── */
+.moverlay{display:none;position:fixed;inset:0;background:#000b;z-index:100;align-items:center;justify-content:center}
+.moverlay.open{display:flex}
+.mbox{background:var(--bg-card);border:1.5px solid var(--accent);border-radius:var(--radius);padding:22px;max-width:360px;width:90%;max-height:80vh;overflow-y:auto}
+.mbox h3{font-family:'Cinzel Decorative',cursive;font-size:.88rem;color:var(--accent);margin-bottom:10px}
+.mbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.mbtn{flex:1;min-width:90px;padding:9px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg-surface);color:var(--text);font-family:'Nunito',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s}
+.mbtn:hover{border-color:var(--accent2);color:var(--accent2)}
+.mbtn.mprimary{background:linear-gradient(135deg,#7a4a1e,var(--accent2));border-color:transparent;color:#1c0f05}
+.mbtn.mprimary:hover{filter:brightness(1.1)}
+.rpick-row{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}
+.rpbtn{padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg-surface);font-size:.78rem;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
+.rpbtn:hover,.rpbtn.picked{border-color:var(--accent2);background:var(--bg-hover)}
+
+/* ── END ── */
+.eoverlay{display:none;position:fixed;inset:0;background:#000b;z-index:200;align-items:center;justify-content:center}
+.eoverlay.open{display:flex}
+.ebox{background:var(--bg-card);border:2px solid var(--accent2);border-radius:var(--radius);padding:36px 28px;text-align:center;max-width:380px;width:90%;box-shadow:0 0 60px #e8b86d22}
+.ebox h2{font-family:'Cinzel Decorative',cursive;font-size:1.3rem;color:var(--accent2);margin-bottom:8px}
+.ebox p{color:var(--text-muted);margin-bottom:14px;font-size:.9rem}
+.slist{list-style:none;margin-bottom:18px}
+.slist li{padding:5px 0;font-size:.9rem;border-bottom:1px solid var(--border)}
+.slist li.winner{color:var(--accent2);font-weight:700;font-size:1rem}
+
+/* ── RULES ── */
+.rcontent{max-width:720px;margin:0 auto;padding:14px}
+.rcard{background:var(--bg-card);border:1.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px}
+.rcard h2{font-family:'Cinzel Decorative',cursive;font-size:.85rem;color:var(--accent);margin-bottom:10px}
+.rcard h3{font-size:.83rem;color:var(--accent2);margin:9px 0 4px;font-weight:700}
+.rcard p,.rcard li{font-size:.83rem;line-height:1.7;color:var(--text)}
+.rcard ul{padding-left:15px}
+.rcard li{margin-bottom:2px}
+.rnote{background:var(--bg-surface);border-left:3px solid var(--accent);border-radius:0 7px 7px 0;padding:7px 11px;font-size:.8rem;margin:7px 0;color:var(--text-muted)}
+.rnote.rr{border-color:var(--accent4)}.rnote.rg{border-color:var(--accent3)}.rnote.ra{border-color:var(--accent2)}
+.abtn{width:100%;background:var(--bg-surface);border:1.5px solid var(--border);border-radius:7px;padding:10px 13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;color:var(--text);font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:700;text-align:left;transition:all .2s;margin-bottom:3px}
+.abtn:hover,.abtn.open{background:var(--bg-hover);border-color:var(--accent)}
+.abtn.open{border-radius:7px 7px 0 0;margin-bottom:0}
+.aarr{transition:transform .25s;color:var(--accent);font-size:.75rem}
+.abtn.open .aarr{transform:rotate(180deg)}
+.abody{display:none;background:var(--bg-card);border:1.5px solid var(--accent);border-top:none;border-radius:0 0 7px 7px;padding:11px 13px;font-size:.8rem;line-height:1.7;margin-bottom:7px}
+.abody.open{display:block}
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:9px;margin-bottom:10px}
+.kpi{background:var(--bg-surface);border:1.5px solid var(--border);border-radius:9px;padding:10px;text-align:center}
+.knum{font-family:'Cinzel Decorative',cursive;font-size:1.6rem;line-height:1;font-weight:700}
+.klbl{font-size:.65rem;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
+.ka .knum{color:var(--accent2)}.kg .knum{color:var(--accent3)}.kr .knum{color:var(--accent4)}.kp .knum{color:var(--accent)}
+.mmini{background:var(--bg-surface);border:1.5px solid var(--border);border-radius:7px;padding:9px;margin-bottom:5px}
+.mmhdr{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+.mmname{font-weight:700;font-size:.82rem}
+.mmdesc{font-size:.76rem;color:var(--text-muted);line-height:1.5}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--bg-hover);border:1px solid var(--accent);border-radius:9px;padding:9px 18px;font-size:.8rem;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none;max-width:300px;text-align:center}
+#toast.show{opacity:1}
+</style>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="theme-color" content="#2b1e0e">
+</head>
+<body>
+
+<nav class="main-nav">
+  <button class="nav-btn active" id="nav-setup" onclick="showScreen('setup')">🐱 Menu</button>
+  <button class="nav-btn" id="nav-game" onclick="showScreen('game')" style="display:none">🎮 Partita</button>
+</nav>
+
+<!-- ═══ SETUP ═══ -->
+<div class="screen active" id="screen-setup">
+  <div class="setup-wrap">
+    <div class="setup-card">
+      <span class="cat-anim">🐱</span>
+      <h2>FIFO FAFO</h2>
+      <p class="sub">Il gioco del gatto e del letto</p>
+      <span class="slabel">Il tuo nome</span>
+      <input class="sinput" id="pname" type="text" value="Niky" maxlength="12">
+      <span class="slabel">Difficoltà Avversario AI</span>
+      <div class="sopts">
+        <button class="sopt" id="de" onclick="selD('easy')">🟢 Facile</button>
+        <button class="sopt sel" id="dm" onclick="selD('medium')">🟡 Medio</button>
+        <button class="sopt" id="dh" onclick="selD('hard')">🔴 Difficile</button>
+      </div>
+      <button class="btn-start" onclick="startGame()">🎲 Inizia Partita</button>
+      <div id="resume-wrap" style="display:none;margin-top:8px">
+        <button class="btn-start" onclick="loadGame()" style="background:var(--bg-hover);color:var(--accent2);border:1.5px solid var(--accent2)">💾 Riprendi partita (Turno <span id="resume-turn"></span>/15)</button>
+        <button onclick="localStorage.removeItem('fifo_fafo_save');document.getElementById('resume-wrap').style.display='none'" style="display:block;margin:4px auto 0;background:none;border:none;color:var(--text-muted);font-size:.72rem;cursor:pointer">✕ cancella salvataggio</button>
+      </div>
+    </div>
+    <div class="setup-card" style="font-size:.8rem;color:var(--text-muted);text-align:left;padding:16px 20px">
+      <strong style="color:var(--accent)">Chi è chi:</strong><br>
+      👤 <strong style="color:var(--accent3)">Tu</strong> — costruisci il tuo Flow ogni turno<br>
+      🤖 <strong style="color:var(--blue)">Avversario AI</strong> — giocatore 2, gestito dal computer<br>
+      🐱 <strong style="color:var(--accent)">Heafy</strong> — il gatto automa, segue i suoi mood
+    </div>
+  </div>
+</div>
+
+<!-- ═══ GAME ═══ -->
+<div class="screen" id="screen-game">
+  <div class="ghdr">
+    <span class="gtitle">🐱 FIFO FAFO</span>
+    <div class="turn-row">
+      <span id="pbadge" class="pbadge pb-mattino">🌄 Mattino</span>
+      <span id="tnum" class="tnum">Turno 1/15</span>
+      <span id="phase-badge" class="bsm bg">Costruisci Flow</span>
+    </div>
+    <button class="btn-menu" onclick="showScreen('setup')">↺ Menu</button>
+  </div>
+
+  <div class="glayout">
+    <div class="gmain">
+
+      <!-- House -->
+      <div class="panel">
+        <div class="ptitle">🏠 La Casa — Anello delle Stanze</div>
+        <div class="house-wrap">
+          <div class="house-svg-wrap">
+            <svg id="hsvg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
+          </div>
+        </div>
+        <div id="legend-row" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:.72rem;color:var(--text-muted)">
+          <span>👤 Tu</span><span>🤖 Avversario</span><span>🐱 Heafy</span><span>● risorsa presente</span>
+        </div>
+      </div>
+
+      <!-- Resolve log / Flow builder -->
+      <div id="flow-area"></div>
+
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="gside">
+      <!-- Heafy -->
+      <div class="pbox heafy-box" id="heafy-side"></div>
+      <!-- Players -->
+      <div id="players-side"></div>
+      <!-- Mood queue -->
+      <div class="panel">
+        <div class="ptitle">🌀 Ruota Mood</div>
+        <div id="moodq"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RULES ═══ -->
+
+
+<!-- INTERACT MODAL -->
+<div class="moverlay" id="imodal">
+  <div class="mbox" id="imodal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <h3 style="margin:0">🐱 Interagisci con Heafy</h3>
+      <button id="imodal-min-btn" onclick="toggleModalMin()" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:.75rem;color:var(--text-muted)">👁 Guarda</button>
+    </div>
+    <div id="imodal-body"></div>
+    <div class="mbtns" id="imodal-btns"></div>
+  </div>
+</div>
+<!-- Minimized modal bar -->
+<div id="imodal-mini" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:1001;background:var(--bg-hover);border-top:2px solid var(--accent);padding:10px 16px;display:none;align-items:center;justify-content:space-between">
+  <span style="font-size:.8rem;color:var(--accent)">🐱 Interagisci con Heafy — in attesa della tua scelta</span>
+  <button onclick="toggleModalMin()" style="background:var(--accent);border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:.75rem;color:#1a0f00;font-weight:700">Apri →</button>
+</div>
+
+<!-- END OVERLAY -->
+<div class="eoverlay" id="eoverlay">
+  <div class="ebox">
+    <div style="font-size:2.5rem">🐱</div>
+    <h2>Fine Partita!</h2>
+    <p id="emsg"></p>
+    <ul class="slist" id="escores"></ul>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn-start" onclick="document.getElementById('eoverlay').classList.remove('open');showScreen('setup')" style="font-size:.82rem;padding:10px;flex:1">↺ Nuova Partita</button>
+      <button class="btn-start" onclick="document.getElementById('eoverlay').classList.remove('open');showScreen('home')" style="font-size:.82rem;padding:10px;flex:1;background:var(--bg-hover);color:var(--text)">🏠 Menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// CONSTANTS
+const ROOMS=[
+  {id:'cucina',    name:'Cucina',   icon:'🍳',res:'snack'},
+  {id:'bagno',     name:'Bagno',    icon:'🚿',res:'paletta'},
+  {id:'camera',    name:'Camera',   icon:'🛏',res:'cuscino'},
+  {id:'terrazzo',  name:'Terrazzo', icon:'🌿',res:'giochino'},
+  {id:'corridoio', name:'Corridoio',icon:'🚪',res:'coccola'},
+  {id:'mansarda',  name:'Mansarda', icon:'🏚',res:'snack'},
+  {id:'sgabuzzino',name:'Sgabuzz.',icon:'📦',res:'paletta'},
+  {id:'scale',     name:'Scale',    icon:'🪜',res:'giochino'},
+  {id:'ingresso',  name:'Ingresso', icon:'🚪',res:'cuscino'},
+];
+const RES={
+  snack:   {n:'Snack',   i:'🍬'},
+  cuscino: {n:'Cuscino', i:'🛏'},
+  giochino:{n:'Giochino',i:'🎾'},
+  paletta: {n:'Paletta', i:'🪣'},
+  coccola: {n:'Coccola', i:'🤗'},
+};
+// pfOk=risorsa giusta, pfAlt=risorsa sbagliata+counter, pfAny=qualsiasi(no counter), pfNo=nessuna
+// p:'any' = qualsiasi risorsa soddisfa
+// arrabCounter: counter separato per Arrabbiatissimo
+const MOODS=[
+  {id:'affamato',    name:'Affamato',    e:'🍽',p:'snack',    mv:'cucina',   pfOk:2,pfAlt:1,pfAny:0,pfNo:-1},
+  {id:'assonnato',   name:'Assonnato',   e:'😴',p:'cuscino',  mv:'stay',     pfOk:2,pfAlt:1,pfAny:0,pfNo:-1},
+  {id:'curioso',     name:'Curioso',     e:'🔍',p:null,       mv:'explore',  pfOk:0,pfAlt:0,pfAny:1,pfNo:-1},
+  {id:'coccolone',   name:'Coccolone',   e:'🤗',p:'coccola',  mv:'stay',     pfOk:2,pfAlt:1,pfAny:0,pfNo:-1,pfStop:1},
+  {id:'giocherellone',name:'Giocherellone',e:'🎾',p:'giochino',mv:'standard',pfOk:2,pfAlt:1,pfAny:0,pfNo:-1},
+  {id:'irrequieto',  name:'Irrequieto',  e:'😤',p:'any',      mv:'flip',     pfOk:2,pfAlt:0,pfAny:0,pfNo:-1},
+  {id:'neutro',      name:'Neutro',      e:'😐',p:null,       mv:'standard', pfOk:0,pfAlt:0,pfAny:1,pfNo:-1},
+  {id:'bisognoso',   name:'Bisognoso',   e:'🚽',p:'paletta',  mv:'bagno',    pfOk:3,pfAlt:0,pfAny:0,pfNo:-1},
+  {id:'iperattivo',  name:'Iperattivo',  e:'⚡',p:null,       mv:'double',   pfOk:0,pfAlt:0,pfAny:1,pfNo:-1},
+  {id:'dispettoso',  name:'Dispettoso',  e:'😈',p:null,       mv:'standard', pfOk:0,pfAlt:0,pfAny:1,pfNo:-1},
+];
+const CARDS={
+  A1:{t:'A',lbl:'A1',desc:'Orario ×1'},A2:{t:'A',lbl:'A2',desc:'Orario ×2'},
+  A3:{t:'A',lbl:'A3',desc:'Anti ×1'}, A4:{t:'A',lbl:'A4',desc:'Anti ×2'},
+  B1:{t:'B',lbl:'B1',desc:'Raccogli'}, B2:{t:'B',lbl:'B2',desc:'Passa'},
+  C1:{t:'C',lbl:'C1',desc:'Interagisci'}, C2:{t:'C',lbl:'C2',desc:'Passa'},
+  J1:{t:'J',lbl:'J1',desc:'No jolly'}, J2:{t:'J',lbl:'J2',desc:'Jolly!'},
+};
+const MAX_HAND=2;
+
+// GAME STATE
+let G={}, aiDiff='medium', pname='Niky';
+let humanFlow=[null,null,null,null], selCard=null;
+let resolveSteps=[], resolveIdx=0;
+
+function selD(d){
+  aiDiff=d;
+  ['easy','medium','hard'].forEach(x=>document.getElementById('d'+x[0]).classList.toggle('sel',x===d));
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function startGame(){
+  pname=document.getElementById('pname').value.trim()||'Niky';
+  const ro=shuffle([...Array(9).keys()]);
+  const mo=shuffle([...Array(10).keys()]);
+  const camIdx=ro.findIndex(r=>ROOMS[r].id==='camera');
+  const cucIdx=ro.findIndex(r=>ROOMS[r].id==='cucina');
+  const manIdx=ro.findIndex(r=>ROOMS[r].id==='mansarda');
+  const rr={};const dr={};
+  ro.forEach(ri=>{rr[ri]=ROOMS[ri].res?[ROOMS[ri].res]:[];dr[ri]=ROOMS[ri].res;});
+  const humanIsFirst=Math.random()<0.5;
+  const p1Pos=humanIsFirst?cucIdx:manIdx;
+  const p2Pos=humanIsFirst?manIdx:cucIdx;
+  const p1Name=humanIsFirst?pname:'Avversario';
+  const p2Name=humanIsFirst?'Avversario':pname;
+
+  G={
+    ro,mo,rr,dr,
+    moodIdx:0,
+    heafyPos:camIdx,heafyDir:1,
+    heafyCarry:null,
+    heafyCarriedBy:null,
+    specialMood:null,
+    arrabCounter:0,
+    players:[
+      {id:0,name:p1Name,isHuman:humanIsFirst, pos:p1Pos,pf:0,rancor:0,hand:[],j2:2},
+      {id:1,name:p2Name,isHuman:!humanIsFirst,pos:p2Pos,pf:0,rancor:0,hand:[],j2:2},
+    ],
+    turn:1,
+    firstPlayer:0,
+    activePlayer:0,
+    phase:'heafy',
+    aiFlowCards:null,
+    log:[],
+    aiDiff,gameOver:false,
+    irreqSatisfied:false,
+    midTurnMoodChange:false,
+  };
+  humanFlow=[null,null,null,null];selCard=null;
+  resolveSteps=[];resolveIdx=0;
+  localStorage.removeItem('fifo_fafo_save');
+  document.getElementById('nav-game').style.display='';
+  showScreen('game');
+  renderGame();
+  renderFlowArea();
+  addLog('🎮 Partita iniziata!','lm');
+  const p1=G.players[0], p2=G.players[1];
+  const p1ico=p1.isHuman?'👤':'🤖', p2ico=p2.isHuman?'👤':'🤖';
+  const p1cls=p1.isHuman?'ly':'lai', p2cls=p2.isHuman?'ly':'lai';
+  addLog(`${p1ico} <span class="${p1cls}">${p1.name}</span> è Giocatore 1 — parte dalla Cucina 🍳`,'');
+  addLog(`${p2ico} <span class="${p2cls}">${p2.name}</span> è Giocatore 2 — parte dalla Mansarda 🏚`,'');
+  addLog(`🎲 Sorteggio: <span class="${p1cls}">${p1.name}</span> ha vinto il sorteggio ed è Giocatore 1`,'lm');
+  addLog(`🐱 <span class="lh">Heafy</span> dorme in Camera 🛏`,'');
+  saveGame();
+}
+
+function saveGame(){
+  if(!G||!G.players||G.gameOver) return;
+  try{
+    localStorage.setItem('fifo_fafo_save', JSON.stringify({
+      G, humanFlow, selCard, aiDiff, pname
+    }));
+  }catch(e){}
+}
+
+function loadGame(){
+  try{
+    const raw=localStorage.getItem('fifo_fafo_save');
+    if(!raw) return false;
+    const saved=JSON.parse(raw);
+    if(!saved.G||!saved.G.players||saved.G.gameOver){
+      localStorage.removeItem('fifo_fafo_save');
+      return false;
+    }
+    G=saved.G;
+    humanFlow=saved.humanFlow||[null,null,null,null];
+    selCard=saved.selCard||null;
+    aiDiff=saved.aiDiff||'medium';
+    pname=saved.pname||'Niky';
+    resolveSteps=[];resolveIdx=0;
+    document.getElementById('nav-game').style.display='';
+    showScreen('game');
+    renderGame();renderFlowArea();
+    addLog('💾 Partita ripresa dal salvataggio','lm');
+    return true;
+  }catch(e){
+    localStorage.removeItem('fifo_fafo_save');
+    return false;
+  }
+}
+
+function checkSavedGame(){
+  try{
+    const raw=localStorage.getItem('fifo_fafo_save');
+    if(!raw) return null;
+    const saved=JSON.parse(raw);
+    if(!saved.G||saved.G.gameOver) return null;
+    return saved.G;
+  }catch(e){ return null; }
+}
+
+function getPeriod(t){return t<=5?'mattino':t<=10?'pomeriggio':'sera';}
+function getCurrentMood(){
+  if(G.specialMood==='offesissimo')
+    return {id:'offesissimo',name:'Offesissimo',e:'😡',p:null,mv:'standard',pfOk:0,pfAlt:0,pfAny:0,pfNo:0};
+  if(G.specialMood==='arrabbiatissimo')
+    return {id:'arrabbiatissimo',name:'Arrabbiatissimo',e:'🔥',p:'any',mv:'stay',pfOk:2,pfAlt:0,pfAny:2,pfNo:-1};
+  return MOODS[G.mo[G.moodIdx]];
+}
+
+// ══════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════
+function renderGame(){renderHeader();renderHouse();renderSide();renderMoodQ();saveGame();}
+
+function renderHeader(){
+  const p=getPeriod(G.turn);
+  const pb=document.getElementById('pbadge');
+  pb.textContent=p==='mattino'?'🌄 Mattino':p==='pomeriggio'?'☀️ Pomeriggio':'🌙 Sera';
+  pb.className='pbadge pb-'+p;
+  document.getElementById('tnum').textContent='Turno '+G.turn+'/15';
+  const phb=document.getElementById('phase-badge');
+  if(G.phase==='build'){phb.textContent=G.players[G.activePlayer].isHuman?'Il tuo Flow':'';phb.className='bsm bg';}
+  else if(G.phase==='resolve'){phb.textContent='Risoluzione';phb.className='bsm ba';}
+  else{phb.textContent='Fine';phb.className='bsm br';}
+}
+
+function renderHouse(){
+  const svg=document.getElementById('hsvg');
+  const n=9,cx=200,cy=200,R=150,r=36;
+  let h='';
+  for(let i=0;i<n;i++){
+    const a1=(i/n)*Math.PI*2-Math.PI/2,a2=((i+1)/n)*Math.PI*2-Math.PI/2;
+    h+=`<line x1="${cx+R*Math.cos(a1)}" y1="${cy+R*Math.sin(a1)}" x2="${cx+R*Math.cos(a2)}" y2="${cy+R*Math.sin(a2)}" stroke="#5c3e1e" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  }
+  const dir=G.heafyDir===1?'↻':'↺';
+  h+=`<circle cx="200" cy="200" r="38" fill="#2b1e0e" stroke="#5c3e1e" stroke-width="1.5"/>`;
+  h+=`<text x="200" y="196" text-anchor="middle" fill="#c8956c" font-size="18" font-weight="bold">${dir}</text>`;
+  h+=`<text x="200" y="212" text-anchor="middle" fill="#a8917a" font-size="9">direzione</text>`;
+  for(let i=0;i<n;i++){
+    const angle=(i/n)*Math.PI*2-Math.PI/2;
+    const x=cx+R*Math.cos(angle),y=cy+R*Math.sin(angle);
+    const ri=G.ro[i];const room=ROOMS[ri];
+    const resArr=G.rr[ri]||[];
+    const res=resArr[0]||null;
+    const hH=G.heafyPos===i,hP0=G.players[0].pos===i,hP1=G.players[1].pos===i;
+    let fill='#2b1e0e',stroke='#5c3e1e',sw=1.5;
+    if(hH&&!hP0&&!hP1){fill='#3a2810';stroke='#c8956c';sw=2.5;}
+    if(hP0&&!hH&&!hP1){fill='#1a2e1a';stroke='#7db87a';sw=2;}
+    if(hP1&&!hH&&!hP0){fill='#1a1e2e';stroke='#5b9bd5';sw=2;}
+    if(hH&&hP0){fill='#2e2a10';stroke='#e8b86d';sw=3;}
+    if(hH&&hP1){fill='#2a1e2e';stroke='#e07070';sw=3;}
+    h+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    h+=`<text x="${x}" y="${y-9}" text-anchor="middle" font-size="14" dominant-baseline="middle">${room.icon}</text>`;
+    h+=`<text x="${x}" y="${y+6}" text-anchor="middle" fill="#f0e6d3" font-size="8" font-weight="600">${room.name}</text>`;
+    const resArr2=G.rr[G.ro[i]]||[];resArr2.forEach((r,ri2)=>{h+=`<text x="${x+18+(ri2*10)}" y="${y-18}" font-size="10">${RES[r]?.i||'?'}</text>`;});
+    if(hH&&G.heafyCarry)h+=`<text x="${x-22}" y="${y-20}" font-size="10">${RES[G.heafyCarry]?.i||'?'}</text>`;
+    let px=x-14,py=y+20;
+    if(hP0){h+=`<text x="${px}" y="${py}" font-size="10">${G.players[0].isHuman?'👤':'🤖'}</text>`;px+=14;}
+    if(hP1){h+=`<text x="${px}" y="${py}" font-size="10">${G.players[1].isHuman?'👤':'🤖'}</text>`;}
+    if(hH)h+=`<text x="${x+10}" y="${y+20}" font-size="10">🐱</text>`;
+  }
+  svg.innerHTML=h;
+}
+
+
+function getHumanPlayer(){return G.players.find(p=>p.isHuman);}
+function getAIPlayer(){return G.players.find(p=>!p.isHuman);}
+
+function buildLogHTML(){
+  if(!G.log||G.log.length===0) return '';
+  return G.log.slice(0,60).map(e=>`<div class="le">${e.msg}</div>`).join('');
+}
+
+function buildMoodWidget(){
+  const mood=getCurrentMood();
+  const moodRevealed=!(G.turn===1&&G.phase==='heafy'&&resolveSteps.length===0);
+  if(!moodRevealed) return '';
+  const pretTxt=mood.p==='any'?'qualsiasi':mood.p?`${RES[mood.p]?.i} ${RES[mood.p]?.n}`:'Nessuna pretesa';
+  const nextIdx=(G.moodIdx+1)%G.mo.length;
+  const nextMood=MOODS[G.mo[nextIdx]];
+  const nextPretTxt=nextMood.p==='any'?'qualsiasi':nextMood.p?`${RES[nextMood.p]?.i} ${RES[nextMood.p]?.n}`:'Nessuna pretesa';
+  const mvLabels={stay:'Rimane fermo',standard:'1 stanza',flip:'1 stanza',double:'2 stanze',explore:'Esplora fino a risorse',cucina:'Va in Cucina 🍳',bagno:'Va in Bagno 🚿 + attira giocatore'};
+  const nextMvTxt=mvLabels[nextMood.mv]||'1 stanza';
+  const tip=getMoodTooltip(mood.id);
+  return `<div style="background:var(--bg-hover);border:1px solid var(--accent)55;border-radius:10px;padding:10px;margin-bottom:10px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div style="flex:1.2;min-width:130px">
+        <div style="font-size:.6rem;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">😼 Mood attuale</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="font-size:1.3rem">${mood.e}</span>
+          <span style="font-size:.85rem;font-weight:700">${mood.name}</span>
+        </div>
+        <div style="font-size:.7rem;color:var(--text-muted);margin-bottom:2px">Pretesa: <strong>${pretTxt}</strong></div>
+        <div style="font-size:.68rem;color:var(--text-muted);line-height:1.5">${tip}</div>
+      </div>
+      <div style="flex:1;min-width:110px;border-left:1px solid var(--border);padding-left:10px;opacity:.85">
+        <div style="font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Prossimo →</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+          <span style="font-size:1.1rem">${nextMood.e}</span>
+          <span style="font-size:.8rem;font-weight:700">${nextMood.name}</span>
+        </div>
+        <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:2px">🐾 ${nextMvTxt}</div>
+        <div style="font-size:.68rem;color:var(--text-muted)">Pretesa: ${nextPretTxt}</div>
+        <div style="font-size:.66rem;color:var(--text-muted);margin-top:2px;opacity:.8">${getMoodTooltip(nextMood.id).split('<br>')[1]||''}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderSide(){
+  const mood=getCurrentMood();
+  const moodRevealed=!(G.turn===1&&G.phase==='heafy'&&G.moodIdx===0&&resolveSteps.length===0);
+  const pretTxt=moodRevealed?(mood.p==='any'?'qualsiasi risorsa':mood.p?`${RES[mood.p]?.i} ${RES[mood.p]?.n}`:'Nessuna pretesa'):'???';
+  const moodDesc=moodRevealed?getMoodTooltip(mood.id):'Premi "Rivela Mood" per scoprirlo';
+  document.getElementById('heafy-side').innerHTML=`
+    <div class="pname-row">
+      <span style="font-size:1.1rem">🐱</span>
+      <span class="pname" style="color:var(--accent)">Heafy</span>
+      <span class="bsm bp" style="margin-left:auto">Automa</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;cursor:pointer;background:var(--bg-card);border-radius:8px;padding:7px;border:1px solid var(--border)" onclick="toggleMoodTooltip()" title="Clicca per dettagli">
+      <span style="font-size:1.6rem">${moodRevealed?mood.e:'❓'}</span>
+      <div style="flex:1">
+        <div style="font-size:.82rem;font-weight:700">${moodRevealed?mood.name:'Mood sconosciuto'} <span style="font-size:.62rem;color:var(--text-muted)">ⓘ tap</span></div>
+        <div style="font-size:.7rem;color:var(--text-muted)">Pretesa: ${pretTxt}</div>
+      </div>
+    </div>
+    <div id="mood-tooltip" style="display:none;background:var(--bg-card);border:1px solid var(--accent);border-radius:8px;padding:9px;font-size:.75rem;line-height:1.6;margin-bottom:6px;color:var(--text-muted)">${moodDesc}</div>
+    <div style="font-size:.7rem;color:var(--text-muted)">Direzione: ${G.heafyDir===1?'↻ Orario':'↺ Antiorario'}</div>
+    <div style="font-size:.7rem;color:var(--text-muted);margin-top:3px">Counter 🔥 Arrabbiatissimo (risorsa sbagliata):</div>
+    <div class="counter-wrap">${[0,1,2].map(i=>`<div class="cdot ${i<G.arrabCounter?'filled':''}"></div>`).join('')}<span style="font-size:.65rem;color:var(--text-muted);margin-left:4px">${G.arrabCounter}/3 — a 3 scatta Arrabbiatissimo</span></div>
+    ${G.heafyCarry?`<div style="font-size:.7rem;color:var(--accent);margin-top:4px">In bocca: ${RES[G.heafyCarry]?.i} ${RES[G.heafyCarry]?.n}</div>`:''}
+    <div style="font-size:.7rem;color:var(--text-muted);margin-top:4px">Stanza: ${ROOMS[G.ro[G.heafyPos]]?.icon} ${ROOMS[G.ro[G.heafyPos]]?.name}</div>
+  `;
+
+  document.getElementById('players-side').innerHTML=G.players.map(p=>{
+    const isAct=p.id===G.activePlayer&&G.phase==='build';
+    const col=p.isHuman?'you-box':'ai-box';
+    const ico=p.isHuman?'👤':'🤖';
+    const ncls=p.isHuman?'ly':'lai';
+    const handH=p.hand.length
+      ?p.hand.map(r=>`<div class="rtok" title="${RES[r]?.n}">${RES[r]?.i||'?'}</div>`).join('')
+      :`<span style="font-size:.7rem;color:var(--text-muted);font-style:italic">Nessuna risorsa</span>`;
+    const handWarn=p.hand.length>=MAX_HAND?`<span style="font-size:.65rem;color:var(--accent4);margin-left:4px">max!</span>`:'';
+    return `<div class="pbox ${col} ${isAct?'active-turn':''}">
+      <div class="pname-row">
+        <span>${ico}</span>
+        <span class="pname"><span class="${ncls}">${p.name}</span></span>
+        ${isAct?'<span class="bsm bg" style="font-size:.6rem">Turno</span>':''}
+        <span class="bsm ba" style="font-size:.6rem;margin-left:auto">J2×${p.j2}</span>
+        <span class="ppts">${p.pf} <span>PF</span></span>
+      </div>
+      ${p.rancor?`<div style="font-size:.7rem;color:var(--accent4)">Rancore: ${'😤'.repeat(p.rancor)}</div>`:''}
+      <div style="font-size:.7rem;color:var(--text-muted);margin-bottom:3px">Stanza: ${ROOMS[G.ro[p.pos]]?.icon} ${ROOMS[G.ro[p.pos]]?.name}</div>
+      <div class="phand">${handH}${handWarn}${p.hand.length?`<span style="font-size:.68rem;color:var(--text-muted);align-self:center">(${p.hand.length}/${MAX_HAND})</span>`:''}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMoodQ(){
+  const n=G.mo.length;
+  document.getElementById('moodq').innerHTML=[0,1,2,3].map(i=>{
+    const m=MOODS[G.mo[(G.moodIdx+i)%n]];
+    const tip=getMoodTooltip(m.id);
+    const pretTxt=m.p==='any'?'qualsiasi':m.p?`${RES[m.p]?.i} ${RES[m.p]?.n}`:'Nessuna pretesa';
+    return `<div style="border-radius:7px;border:1px solid ${i===0?'var(--accent)':'transparent'};background:${i===0?'var(--bg-hover)':'transparent'};margin-bottom:3px">
+      <div class="mq-row ${i===0?'mq-active':''}" onclick="toggleMoodQ(${i})" style="cursor:pointer">
+        <span style="font-size:.95rem">${m.e}</span>
+        <span style="font-size:.74rem;font-weight:${i===0?700:400};color:${i===0?'var(--text)':'var(--text-muted)'}">${m.name}</span>
+        <span style="font-size:.62rem;color:var(--text-muted);margin-left:auto">${pretTxt} ⓘ</span>
+      </div>
+      <div id="mqtip-${i}" style="display:none;font-size:.72rem;color:var(--text-muted);padding:6px 8px;line-height:1.6;border-top:1px solid var(--border)">${tip}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════
+// FLOW BUILDER
+// ══════════════════════════════════════
+function renderFlowArea(){
+  const el=document.getElementById('flow-area');
+  if(!G||G.gameOver){el.innerHTML='';return;}
+  if(G.phase==='heafy') renderHeafyPhasePanel(el);
+  else if(G.phase==='heafy_done') renderHeafyDonePanel(el);
+  else if(G.phase==='build') renderFlowBuilder(el);
+  else if(G.phase==='resolve') renderResolvePanel(el);
+}
+
+function renderHeafyDonePanel(el){
+  el.innerHTML=`<div class="panel" style="padding:14px">
+    <div class="ptitle">🐱 Turno ${G.turn} — Fase Heafy</div>
+    ${buildMoodWidget()}
+    <button class="btn-flow" onclick="startBuildPhase()" style="margin-bottom:10px">🃏 Scegli le carte →</button>
+    <div class="logbox" id="logbox" style="max-height:none">${buildLogHTML()}</div>
+  </div>`;
+}
+
+function startBuildPhase(){
+  G.phase='build';
+  renderGame();renderFlowArea();
+}
+
+function renderHeafyPhasePanel(el){
+  const isFirstTurn=G.turn===1&&G.moodIdx===0;
+  const mood=getCurrentMood();
+  const pretTxt=mood.p==='any'?'qualsiasi':mood.p?`${RES[mood.p]?.i} ${RES[mood.p]?.n}`:'Nessuna pretesa';
+
+  const hasSteps=resolveSteps.length>0&&resolveIdx<resolveSteps.length;
+  const displaySteps=resolveSteps.slice(0,resolveIdx).filter(s=>s.msg);
+
+  el.innerHTML=`<div class="panel" style="padding:14px">
+    <div class="ptitle">🐱 Turno ${G.turn} — Fase Heafy</div>
+    ${buildMoodWidget()}
+    ${hasSteps
+      ?`<button class="btn-next-step" onclick="nextStep()" style="margin-bottom:10px">▶ Passo successivo</button>`
+      :`<button class="btn-flow" onclick="executeHeafyPhase()" style="margin-bottom:10px">${isFirstTurn?'🐾 Rivela il Mood →':'🐾 Prossimo Mood →'}</button>`
+    }
+    ${!hasSteps&&isFirstTurn
+      ?`<div style="font-size:.78rem;color:var(--text-muted);font-style:italic;margin-bottom:8px">Premi per rivelare il primo mood e vedere dove si sposta Heafy.</div>`
+      :''
+    }
+    <div class="logbox" id="logbox" style="max-height:none;margin-bottom:8px">${buildLogHTML()}</div>
+    ${displaySteps.length>0?'<div>'+displaySteps.slice(-8).map(s=>`<div class="step-msg ${s.cls}">${s.msg}</div>`).join('')+'</div>':''}
+  </div>`;
+}
+
+function executeHeafyPhase(){
+  G.phase='heafy';
+  G.players.forEach(p=>p.interactedThisTurn=false);
+  G.irreqSatisfied=false;
+  resolveSteps=[];resolveIdx=0;
+  const n=G.ro.length;
+
+  // Step 1: Reveal mood only (no movement yet)
+  const isFirstReveal=G.turn===1&&G.moodIdx===0;
+  let moodMsg='';
+  if(isFirstReveal){
+    const nm=MOODS[G.mo[G.moodIdx]];
+    const pt=nm.p==='any'?'qualsiasi':nm.p?`${RES[nm.p]?.i} ${RES[nm.p]?.n}`:'Nessuna pretesa';
+    moodMsg=`😼 Heafy rivela il suo mood: ${nm.e} <strong>${nm.name}</strong> • Pretesa: ${pt}`;
+  } else if(G.specialMood==='arrabbiatissimo'){
+    moodMsg='🔥 Heafy Arrabbiatissimo — non cambia mood, rimane fermo';
+  } else if(G.specialMood==='offesissimo'){
+    if(G.midTurnMoodChange){
+      // First heafy phase after mid-turn offesissimo: move+damage only, stay offesissimo
+      G.midTurnMoodChange=false; // next heafy phase will calm down
+      moodMsg=`😡 Heafy Offesissimo — si sposterà di 1 stanza (rimane offesissimo per le carte)`;
+    } else {
+      // Second heafy phase: calm down and advance mood
+      G.specialMood=null;
+      G.moodIdx=(G.moodIdx+1)%G.mo.length;
+      const nm=MOODS[G.mo[G.moodIdx]];
+      const pt=nm.p==='any'?'qualsiasi':nm.p?`${RES[nm.p]?.i} ${RES[nm.p]?.n}`:'Nessuna pretesa';
+      moodMsg=`😡→😐 Heafy si calma. Nuovo mood: ${nm.e} <strong>${nm.name}</strong> • Pretesa: ${pt}`;
+    }
+  } else if(G.midTurnMoodChange){
+    G.midTurnMoodChange=false;
+    const nm=MOODS[G.mo[G.moodIdx]];
+    const pt=nm.p==='any'?'qualsiasi':nm.p?`${RES[nm.p]?.i} ${RES[nm.p]?.n}`:'Nessuna pretesa';
+    moodMsg=`😼 Heafy mantiene ${nm.e} <strong>${nm.name}</strong> (cambiato il turno scorso) • Pretesa: ${pt}`;
+  } else {
+    G.moodIdx=(G.moodIdx+1)%G.mo.length;
+    const nm=MOODS[G.mo[G.moodIdx]];
+    const pt=nm.p==='any'?'qualsiasi':nm.p?`${RES[nm.p]?.i} ${RES[nm.p]?.n}`:'Nessuna pretesa';
+    moodMsg=`😼 Heafy cambia mood → ${nm.e} <strong>${nm.name}</strong> • Pretesa: ${pt}`;
+  }
+  addLog(moodMsg,'');
+
+  // Build resolve steps for: movement + interactions + transition
+  // Step A: movement
+  resolveSteps.push({msg:'',cls:'sm-heafy',fn:()=>{
+    const nm=getCurrentMood();
+    const prevRoom=ROOMS[G.ro[G.heafyPos]]?.name;
+    let msg='';
+
+    if(G.specialMood==='offesissimo'){
+      G.heafyPos=(G.heafyPos+G.heafyDir+n)%n;
+      const toR=ROOMS[G.ro[G.heafyPos]];
+      let off2=0;
+      G.players.forEach(p=>{
+        if(p.pos===G.heafyPos){
+          p.pf-=2;
+          const pw=p.isHuman?`👤 <span class="ly">${p.name}</span>`:`🤖 <span class="lai">${p.name}</span>`;
+          resolveSteps.splice(resolveIdx+off2,0,{msg:`😡 Offesissimo colpisce ${pw} → <span class="lw">−2 PF!</span>`,cls:'sm-warn',fn:null});
+          off2++;
+        }
+      });
+      // No calm-down here — resolves next heafy phase
+      return `😡 Offesissimo si sposta da ${prevRoom} → ${toR.icon} <strong>${toR.name}</strong>`;
+    }
+    if(G.specialMood==='arrabbiatissimo') {
+      // Rimane fermo ma infligge -1 PF a chi è nella sua stanza o nelle adiacenti
+      const n2=G.ro.length;
+      const adj=[(G.heafyPos-1+n2)%n2, G.heafyPos, (G.heafyPos+1+n2)%n2];
+      G.players.forEach(p=>{
+        if(adj.includes(p.pos)){
+          p.pf-=1;
+          const pw=p.isHuman?`👤 <span class="ly">${p.name}</span>`:`🤖 <span class="lai">${p.name}</span>`;
+          const pos=p.pos===G.heafyPos?'nella stanza':'adiacente';
+          resolveSteps.splice(resolveIdx,0,{msg:`🔥 Arrabbiatissimo: ${pw} (${pos}) → <span class="lw">−1 PF!</span>`,cls:'sm-warn',fn:null});
+        }
+      });
+      return '🔥 Arrabbiatissimo rimane fermo — danni a chi è vicino';
+    }
+    if(isFirstReveal&&G.turn===1) {}// first reveal: movement runs normally after
+
+    switch(nm.mv){
+      case 'stay':msg=`${nm.e} ${nm.name}: rimane in ${ROOMS[G.ro[G.heafyPos]]?.icon} <strong>${ROOMS[G.ro[G.heafyPos]]?.name}</strong>`;break;
+      case 'flip':case 'standard':{
+        G.heafyPos=(G.heafyPos+G.heafyDir+n)%n;const toR=ROOMS[G.ro[G.heafyPos]];
+        if(nm.id==='dispettoso'){const ri=G.ro[G.heafyPos];let ex='';const arr=G.rr[ri]||[];if(arr.length>0){const rem=arr[Math.floor(Math.random()*arr.length)];G.rr[ri]=arr.filter(r=>r!==rem);ex=` • 😈 Butta via ${RES[rem]?.i} ${RES[rem]?.n}!`;}msg=`😈 Dispettoso: da ${prevRoom} → ${toR.icon} <strong>${toR.name}</strong>${ex}`;}
+        else if(nm.id==='giocherellone'){const ri=G.ro[G.heafyPos];let ex='';const garr=G.rr[ri]||[];if(!G.heafyCarry&&garr.length>0){G.heafyCarry=garr[Math.floor(Math.random()*garr.length)];G.rr[ri]=garr.filter(r=>r!==G.heafyCarry);ex=` • 🎾 <strong>Sequestra ${RES[G.heafyCarry]?.i} ${RES[G.heafyCarry]?.n}</strong>`;}else if(G.heafyCarry){const c=G.heafyCarry;(G.rr[G.ro[G.heafyPos]]=G.rr[G.ro[G.heafyPos]]||[]).push(c);G.heafyCarry=null;ex=` • 📍 <strong>Rilascia ${RES[c]?.i} ${RES[c]?.n}</strong>`;}msg=`🎾 Giocherellone: da ${prevRoom} → ${toR.icon} <strong>${toR.name}</strong>${ex}`;}
+        else if(nm.id==='irrequieto')msg=`😤 Irrequieto: da ${prevRoom} → ${toR.icon} <strong>${toR.name}</strong> • Soddisfalo o cambia direzione!`;
+        else msg=`🐾 da ${prevRoom} → ${toR.icon} <strong>${toR.name}</strong>`;
+        break;}
+      case 'double':G.heafyPos=(G.heafyPos+G.heafyDir*2+n)%n;msg=`⚡ Iperattivo: da ${prevRoom} → ${ROOMS[G.ro[G.heafyPos]]?.icon} <strong>${ROOMS[G.ro[G.heafyPos]]?.name}</strong>`;break;
+      case 'explore':{let s=0;while(s<n){G.heafyPos=(G.heafyPos+G.heafyDir+n)%n;s++;if((G.rr[G.ro[G.heafyPos]]||[]).length>0)break;}msg=`🔍 Curioso: da ${prevRoom} → ${ROOMS[G.ro[G.heafyPos]]?.icon} <strong>${ROOMS[G.ro[G.heafyPos]]?.name}</strong>`;break;}
+      case 'cucina':{const ci=G.ro.findIndex(r=>ROOMS[r].id==='cucina');G.heafyPos=ci;msg=`🍽 Affamato: sfreccia da ${prevRoom} → 🍳 <strong>Cucina</strong>`;break;}
+      case 'bagno':{
+        const bi=G.ro.findIndex(r=>ROOMS[r].id==='bagno');G.heafyPos=bi;
+        const d0=Math.min(((bi-G.players[0].pos)+n)%n,((G.players[0].pos-bi)+n)%n);
+        const d1=Math.min(((bi-G.players[1].pos)+n)%n,((G.players[1].pos-bi)+n)%n);
+        let att;
+        if(d0===d1){
+          // Tiebreak: highest roll wins
+          let r0=Math.ceil(Math.random()*6), r1=Math.ceil(Math.random()*6);
+          while(r0===r1){r0=Math.ceil(Math.random()*6);r1=Math.ceil(Math.random()*6);}
+          att=r0>r1?G.players[0]:G.players[1];
+          G._bisognoso_tiebreak={p0roll:r0,p1roll:r1,tied:true,winner:att.id};
+        } else {
+          att=d0<d1?G.players[0]:G.players[1];
+          G._bisognoso_tiebreak=null;
+        }
+        att.pos=bi;att._forcedInteract=true;
+        const attW=att.isHuman?`👤 <span class="ly">${att.name}</span>`:`🤖 <span class="lai">${att.name}</span>`;
+        const tb=G._bisognoso_tiebreak;
+        if(tb){
+          msg=`🚽 Bisognoso: sfreccia da ${prevRoom} → 🚿 <strong>Bagno</strong> • Distanza pari! Tiro dadi in corso...`;
+          // Show dice animation FIRST as a blocking step, result logged after
+          resolveSteps.splice(resolveIdx,0,{msg:'',cls:'sm-heafy',fn:()=>{
+            return new Promise(resolve=>{
+              showDiceAnimation(G._bisognoso_tiebreak, att, ()=>{
+                G._bisognoso_tiebreak=null;
+                const tb2msg=`🎲 Dado: ${G.players[0].name}:${tb.p0roll} vs ${G.players[1].name}:${tb.p1roll} → Attira ${att.isHuman?'👤':'🤖'} <span class="${att.isHuman?'ly':'lai'}">${att.name}</span>`;
+                addLog(tb2msg,'');
+                resolve(tb2msg);
+              });
+            });
+          }});
+        } else {
+          msg=`🚽 Bisognoso: sfreccia da ${prevRoom} → 🚿 <strong>Bagno</strong> • Attira ${attW} (più vicino)`;
+        }
+        break;
+      }
+      default:G.heafyPos=(G.heafyPos+G.heafyDir+n)%n;msg=`🐾 da ${prevRoom} → ${ROOMS[G.ro[G.heafyPos]]?.icon} <strong>${ROOMS[G.ro[G.heafyPos]]?.name}</strong>`;
+    }
+
+    // After movement: queue passive interactions
+    const needInteract=[];
+    G.players.forEach(p=>{
+      if((p.pos===G.heafyPos||p._forcedInteract)&&G.specialMood!=='offesissimo'&&!p.interactedThisTurn)
+        needInteract.push(p);
+    });
+    G.players.forEach(p=>p._forcedInteract=false);
+
+    // If both players need to interact, randomize order with dice
+    if(needInteract.length===2){
+      const r0=Math.ceil(Math.random()*6),r1=Math.ceil(Math.random()*6);
+      // Higher roll goes first; reroll ties
+      const first= r0>=r1 ? needInteract[0] : needInteract[1];
+      const second= r0>=r1 ? needInteract[1] : needInteract[0];
+      const diceMsg=`🎲 Entrambi con Heafy! Dado ordine: ${G.players[0].name}:${r0} vs ${G.players[1].name}:${r1} → ${first.isHuman?'👤':'🤖'} ${first.name} interagisce per primo`;
+      resolveSteps.splice(resolveIdx,0,{msg:diceMsg,cls:'sm-heafy',fn:null});
+      needInteract.length=0;needInteract.push(first,second);
+      let off=1;
+      needInteract.forEach(p=>{
+        const pw=p.isHuman?`👤 <span class="ly">${p.name}</span>`:`🤖 <span class="lai">${p.name}</span>`;
+        const nm2=getCurrentMood();
+        const sm=nm2.mv==='stay'?`😼 Heafy è con ${pw} — pretende interazione!`:`😼 Heafy arriva da ${pw} — interazione obbligatoria!`;
+        resolveSteps.splice(resolveIdx+off,0,{msg:sm,cls:'sm-heafy',fn:null});
+        if(p.isHuman){resolveSteps.splice(resolveIdx+off+1,0,{msg:'',cls:'sm-you',fn:()=>'__INTERACT_PASSIVE__'});}
+        else{resolveSteps.splice(resolveIdx+off+1,0,{msg:'',cls:'sm-ai',fn:()=>{
+          if(G.specialMood==='offesissimo') return null;
+          p.interactedThisTurn=true;return execAIInteract(p)+' (passiva)';
+        }});}
+        off+=2;
+      });
+    } else {
+      let off=0;
+      needInteract.forEach(p=>{
+        const pw=p.isHuman?`👤 <span class="ly">${p.name}</span>`:`🤖 <span class="lai">${p.name}</span>`;
+        const nm2=getCurrentMood();
+        const sm=nm2.mv==='stay'?`😼 Heafy è con ${pw} — pretende interazione!`:`😼 Heafy arriva da ${pw} — interazione obbligatoria!`;
+        resolveSteps.splice(resolveIdx+off,0,{msg:sm,cls:'sm-heafy',fn:null});
+        if(p.isHuman){resolveSteps.splice(resolveIdx+off+1,0,{msg:'',cls:'sm-you',fn:()=>'__INTERACT_PASSIVE__'});}
+        else{resolveSteps.splice(resolveIdx+off+1,0,{msg:'',cls:'sm-ai',fn:()=>{
+          if(G.specialMood==='offesissimo') return null;
+          p.interactedThisTurn=true;return execAIInteract(p)+' (passiva)';
+        }});}
+        off+=2;
+      });
+    }
+    return msg||null;
+  }});
+
+  // Final step: transition to heafy_done
+  resolveSteps.push({msg:'',cls:'sm-info',fn:()=>{G.phase='heafy_done';renderGame();renderFlowArea();return null;}});
+
+  renderGame();renderFlowArea();
+}
+
+
+function renderFlowBuilder(el){
+  const you=getHumanPlayer();
+  const typesPlaced=humanFlow.filter(Boolean).map(c=>CARDS[c]?.t);
+  const all=humanFlow.every(Boolean);
+  const slotsH=humanFlow.map((c,i)=>{
+    const t=c?CARDS[c]?.t.toLowerCase():'';
+    return `<div class="fslot ${c?'filled f'+t:''}" onclick="clickSlot(${i})">
+      <span class="fslot-n">${i+1}</span>
+      ${c?('<span class="fslot-lbl">'+c+'</span><span class="fslot-sub">'+CARDS[c]?.desc+'</span>')
+         :('<span style="font-size:.6rem;color:var(--text-muted)">'+(selCard?'← qui':'slot')+'</span>')}
+    </div>${i<3?'<span class="farrow">→</span>':''}`;
+  }).join('');
+
+  const mkGrp=(key,title,cards)=>`<div class="cg-${key}"><div class="cg-title">${title}</div><div class="copts">${
+    cards.map(c=>{const placed=humanFlow.includes(c);const isSel=selCard===c;
+      return `<button class="copt ${placed?'placed':''} ${isSel?'csel':''}" onclick="${placed?'':'selectCard(\''+c+'\')'}" ${placed?'disabled':''}>
+        <div>${c}</div><div style="font-size:.58rem;font-weight:400">${CARDS[c]?.desc}</div></button>`;
+    }).join('')}</div></div>`;
+
+  const jCards=you.j2>0?['J1','J2']:['J1'];
+  el.innerHTML=`<div class="panel">
+    <div class="ptitle">🃏 Il Tuo Flow</div>
+    ${buildMoodWidget()}
+    <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:7px">Scegli carta → clicca slot. Slot occupato = rimuovi.</div>
+    ${selCard?`<div style="font-size:.78rem;color:var(--accent2);margin-bottom:6px;padding:4px 8px;background:var(--bg-hover);border-radius:6px">📌 <strong>${selCard}</strong> — ${CARDS[selCard]?.desc}. Clicca uno slot.</div>`:''}
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px;overflow-x:auto">${slotsH}</div>
+    <div class="cpicker">
+      ${mkGrp('a','🔵 Movimento A',['A1','A2','A3','A4'])}
+      ${mkGrp('b','🟢 Raccolta B',['B1','B2'])}
+      ${mkGrp('c','🔴 Interazione C',['C1','C2'])}
+      ${mkGrp('j','🟡 Jolly J '+(you.j2>0?'(J2: '+you.j2+')':'(esaurite)'),jCards)}
+    </div>
+    <button class="btn-flow" onclick="confirmFlow()" ${all?'':'disabled'}>
+      ${all?'▶ Conferma Flow e Gioca!':'Posiziona tutte le carte ('+humanFlow.filter(Boolean).length+'/4)'}
+    </button>
+  </div>
+  <div class="panel" style="margin-top:8px">
+    <div class="ptitle">📜 Diario di Bordo</div>
+    <div class="logbox" id="logbox">${buildLogHTML()}</div>
+  </div>`;
+}
+
+function selectCard(c){selCard=c;renderFlowArea();}
+function clickSlot(i){
+  if(humanFlow[i]){humanFlow[i]=null;selCard=null;}
+  else if(selCard){
+    if(humanFlow.includes(selCard)){showToast('Carta già usata!');return;}
+    const t=CARDS[selCard]?.t;
+    if(humanFlow.some(c=>c&&CARDS[c]?.t===t)){showToast('Una carta per tipo!');return;}
+    humanFlow[i]=selCard;selCard=null;
+  }
+  renderFlowArea();
+}
+function confirmFlow(){
+  if(!humanFlow.every(Boolean)){showToast('Posiziona tutte le carte!');return;}
+  G.aiFlowCards=buildAIFlow();
+  G.phase='resolve';
+  buildResolveSteps();
+  renderGame();renderFlowArea();
+}
+
+// ══════════════════════════════════════
+// AI FLOW
+// ══════════════════════════════════════
+function buildAIFlow(){
+  const n=G.ro.length,ai=G.players[1];
+  const hp=G.heafyPos,ap=ai.pos,diff=G.aiDiff;
+  const distCW=((hp-ap)+n)%n,distCCW=((ap-hp)+n)%n;
+  let bestA='A1';
+  if(diff==='easy'){bestA=['A1','A2','A3','A4'][Math.floor(Math.random()*4)];}
+  else{
+    if(distCW===1)bestA='A1';else if(distCW===2)bestA='A2';
+    else if(distCCW===1)bestA='A3';else if(distCCW===2)bestA='A4';
+    else bestA=distCW<=distCCW?'A2':'A4';
+  }
+  const mv={A1:1,A2:2,A3:-1,A4:-2}[bestA];
+  let posA=ap;
+  for(let i=0;i<Math.abs(mv);i++)posA=(posA+(mv>0?1:-1)+n)%n;
+  const withHeafy=posA===hp;
+  const ri=G.ro[posA];
+  // B1 near Heafy: evaluate risk vs benefit
+  const hasResAtA=(G.rr[ri]||[]).length>0;
+  let bestB='B2';
+  if(hasResAtA){
+    if(posA!==hp){
+      // Safe to collect — always worth it
+      bestB='B1';
+    } else {
+      // Heafy is there — risky (triggers offesissimo -1PF)
+      // Do it only if: resource matches heafy's pretesa (we'd get +2 via C1 anyway, but B1 also collects it)
+      // Actually B1 at heafy = offesissimo immediately, never strategically good
+      // UNLESS we're easy diff and just random
+      if(diff==='easy') bestB=Math.random()<0.3?'B1':'B2';
+      else bestB='B2'; // medium/hard never do this
+    }
+  }
+  if(G.specialMood==='offesissimo') bestB='B2'; // offesissimo never collect near heafy
+  const nm=getCurrentMood();
+  const hasPretesa=nm.p&&nm.p!=='any';
+  const hasRightRes=hasPretesa&&ai.hand.includes(nm.p);
+  const hasAnyRes=ai.hand.length>0;
+  // Interact only if: has right resource, OR mood has no pretesa and has any resource, OR arrabbiatissimo
+  const shouldInteract=withHeafy&&G.specialMood!=='offesissimo'&&(
+    hasRightRes||
+    (!hasPretesa&&hasAnyRes)||
+    G.specialMood==='arrabbiatissimo'&&hasAnyRes
+  );
+  let bestC=shouldInteract?'C1':'C2';
+  if(diff==='easy'&&Math.random()<.3)bestC=Math.random()<.5?'C1':'C2';
+  let bestJ='J1';
+  if(ai.j2>0&&diff!=='easy'){
+    // Use J2 only if it would bring us to Heafy (and we plan to interact)
+    const distAfterA=Math.min(
+      ((hp-posA)+n)%n,
+      ((posA-hp)+n)%n
+    );
+    // J2 worth using if after A we're still >0 away but close enough to reach with J2
+    if(!withHeafy&&distAfterA<=2) bestJ='J2';
+    // Hard: also use J2 proactively to block or reach
+    if(diff==='hard'&&!withHeafy&&distAfterA<=3) bestJ='J2';
+  }
+  if(ai.j2===0)bestJ='J1';
+  // Medium: if using J2 but not planning to interact, downgrade to J1
+  if(diff==='medium'&&bestJ==='J2'&&bestC==='C2') bestJ='J1';
+  if(diff==='easy')return shuffle([bestA,bestB,bestC,bestJ]);
+  if(diff==='medium')return withHeafy?[bestA,bestC,bestB,bestJ]:[bestA,bestB,bestJ,bestC];
+  return withHeafy?[bestA,bestJ,bestC,bestB]:[bestA,bestJ,bestB,bestC];
+}
+
+// ══════════════════════════════════════
+// RESOLVE STEPS
+// ══════════════════════════════════════
+function buildResolveSteps(){
+  resolveSteps=[];resolveIdx=0;
+  const n=G.ro.length;
+  const active=G.players[G.activePlayer];
+  const you=getHumanPlayer(),ai=getAIPlayer();
+  const hFlow=[...humanFlow],aFlow=[...G.aiFlowCards];
+  const step=(msg,cls,fn)=>resolveSteps.push({msg,cls,fn:fn||null});
+
+  step(`━━ TURNO ${G.turn} — ${active.name} risolve per primo ━━`,'lm');
+
+  // Player flows (Heafy phase already executed before this)
+  const flowsInOrder=active===you?[[you,hFlow,'sm-you'],[ai,aFlow,'sm-ai']]:[[ai,aFlow,'sm-ai'],[you,hFlow,'sm-you']];
+  for(const [player,flow,cls] of flowsInOrder){
+    const who=player.isHuman?`👤 <strong>${player.name}</strong>`:`🤖 <strong>${player.name}</strong>`;
+    step(`${who} — Flow: ${flow.join(' → ')}`,cls);
+    for(const card of flow){
+      resolveSteps.push({msg:'',cls,fn:()=>execCard(player,card)});
+    }
+  }
+
+  // End of turn
+  resolveSteps.push({msg:'',cls:'sm-info',fn:()=>{
+    // Irrequieto: if not satisfied this turn, flip direction and -1 PF to whoever is in Heafy's room
+    const nm=getCurrentMood();
+    if(nm.id==='irrequieto'&&!G.irreqSatisfied){
+      G.heafyDir*=-1;
+      const inRoom=G.players.filter(p=>p.pos===G.heafyPos);
+      inRoom.forEach(p=>{
+        p.pf-=1;
+        const pw=p.isHuman?`👤 <span class="ly">${p.name}</span>`:`🤖 <span class="lai">${p.name}</span>`;
+        pushResolveMsg(`😤 Irrequieto non soddisfatto → direzione invertita ${G.heafyDir===1?'↻':'↺'} • <span class="lw">−1 PF</span> a ${pw}`,'sm-warn');
+      });
+      if(inRoom.length===0){
+        pushResolveMsg(`😤 Irrequieto non soddisfatto → direzione invertita ${G.heafyDir===1?'↻':'↺'} (nessuno in stanza, nessun PF perso)`,'sm-warn');
+      }
+    }
+    checkRancor();
+    checkPeriodRecharge();
+    G.turn++;
+    if(G.turn>15){G.phase='done';return '🏁 Fine partita! Calcolo punteggi...';}
+    advanceTurn();
+    return `✅ Fine turno. Turno ${G.turn}/15 — ${G.players[G.activePlayer].name} inizia`;
+  }});
+  resolveSteps.push({msg:'',cls:'sm-info',fn:()=>{
+    if(G.turn>15||G.phase==='done'){endGame();return '';}
+    humanFlow=[null,null,null,null];selCard=null;
+    G.phase='heafy';
+    renderGame();renderFlowArea();
+    return null;
+  }});
+}
+
+// ══════════════════════════════════════
+// EXEC CARD
+// ══════════════════════════════════════
+function execCard(player,card){
+  const n=G.ro.length;
+  const def=CARDS[card];
+  const who=player.isHuman?`👤 <span class="ly">${player.name}</span>`:`🤖 <span class="lai">${player.name}</span>`;
+
+  switch(def.t){
+    case 'A':{
+      const mv={A1:1,A2:2,A3:-1,A4:-2}[card];
+      const dir=mv>0?1:-1;const steps=Math.abs(mv);
+      const from=ROOMS[G.ro[player.pos]]?.name;
+      const carrying=G.heafyCarriedBy===player.id;
+      for(let i=0;i<steps;i++){
+        player.pos=(player.pos+dir+n)%n;
+        if(carrying) G.heafyPos=player.pos;
+        // If human and carrying, after each step ask deposit
+        if(carrying&&player.isHuman&&i<steps-1){
+          const stepRoom=ROOMS[G.ro[player.pos]];
+          resolveSteps.splice(resolveIdx,0,{
+            msg:`🐱 Tieni Heafy o lo depositi in ${stepRoom.icon} <strong>${stepRoom.name}</strong>?`,
+            cls:'sm-you',fn:null
+          });
+          resolveSteps.splice(resolveIdx+1,0,{msg:'',cls:'sm-you',fn:()=>'__A_DEPOSIT_CHECK__'});
+        }
+      }
+      // Auto-deposit at final step if still carrying and it's last step
+      if(carrying&&player.isHuman){
+        resolveSteps.splice(resolveIdx,0,{msg:'',cls:'sm-you',fn:()=>'__A_DEPOSIT_CHECK__'});
+      } else if(carrying&&!player.isHuman){
+        // AI deposits at destination
+        G.heafyCarriedBy=null;
+      }
+      const toR=ROOMS[G.ro[player.pos]];
+      const carryNote=carrying?' (🐱 con Heafy)':'';
+      return `${who} ${card}: da ${from} → ${toR.icon} <strong>${toR.name}</strong>${carryNote}`;
+    }
+    case 'B':{
+      if(card==='B2')return `${who} B2: non raccoglie`;
+      const ri=G.ro[player.pos];
+      const curRoom=ROOMS[G.ro[player.pos]];
+      if(player.pos===G.heafyPos&&!player._j2SafeCollect){
+        G.specialMood='offesissimo';if(G.phase==="resolve")G.midTurnMoodChange=true;player.pf-=1;
+        return `${who} B1: raccoglie con Heafy presente → 😡 <strong>Offesissimo!</strong> <span class="lw">−1 PF</span>`;
+      }
+      player._j2SafeCollect=false;
+      if(player.pos===G.heafyPos&&G.heafyCarry){
+        const stolen=G.heafyCarry;G.heafyCarry=null;
+        player.hand.push(stolen);player.pf-=1;G.specialMood='offesissimo';if(G.phase==="resolve")G.midTurnMoodChange=true;
+        G.arrabCounter=Math.min(3,G.arrabCounter+2);
+        if(G.arrabCounter>=3){G.specialMood='arrabbiatissimo';if(G.phase==="resolve")G.midTurnMoodChange=true;G.arrabCounter=0;}
+        return `${who} ruba oggetto sequestrato ${RES[stolen]?.i} → <span class="lw">−1 PF</span> 😡 Offesissimo! Arrab. +2`;
+      }
+      const resArr=G.rr[ri]||[];
+      if(resArr.length===0) return `${who} B1: ${curRoom.icon} ${curRoom.name} è vuota`;
+      if(player.hand.length>=MAX_HAND) return `${who} B1: mano piena (max ${MAX_HAND})`;
+      if(resArr.length===1){
+        const res=resArr[0];G.rr[ri]=[];
+        player.hand.push(res);
+        return `${who} B1: raccoglie ${RES[res]?.i} <strong>${RES[res]?.n}</strong> in ${curRoom.icon} ${curRoom.name} ✓`;
+      }
+      // Multiple resources: human picks, AI picks best
+      if(player.isHuman) return '__B1_PICK__';
+      else {
+        // AI picks: prefer mood pretesa, else first
+        const nm=getCurrentMood();
+        const pref=nm.p&&nm.p!=='any'?resArr.find(r=>r===nm.p):null;
+        const pick=pref||resArr[0];
+        G.rr[ri]=resArr.filter(r=>r!==pick);if(G.rr[ri].length===0)G.rr[ri]=[];
+        player.hand.push(pick);
+        return `${who} B1: raccoglie ${RES[pick]?.i} <strong>${RES[pick]?.n}</strong> in ${curRoom.icon} ${curRoom.name} ✓`;
+      }
+    }
+    case 'C':{
+      if(card==='C2')return `${who} C2: non interagisce`;
+      if(player.pos!==G.heafyPos){
+        // C1 senza Heafy: abbandona risorsa a scelta
+        if(player.hand.length>0){
+          if(player.isHuman) return '__C1_ABANDON__';
+          else {
+            const r=player.hand.shift();
+            (G.rr[G.ro[player.pos]]=G.rr[G.ro[player.pos]]||[]).push(r);
+            return `${who} C1: Heafy non è qui — abbandona ${RES[r]?.i} ${RES[r]?.n} nella stanza`;
+          }
+        }
+        return `${who} C1: Heafy non è qui e non ha risorse da abbandonare — azione saltata`;
+      }
+      if(G.specialMood==='offesissimo')return `${who} C1: Heafy è 😡 Offesissimo — non accetta nulla!`;
+      player.interactedThisTurn=true;
+      if(player.isHuman) return '__INTERACT__';
+      else return execAIInteract(player);
+    }
+    case 'J':{
+      if(card==='J1')return `${who} J1: nessun effetto jolly`;
+      if(player.j2<=0)return `${who} J2: cariche esaurite`;
+      if(player.isHuman){
+        // Check if A card was already played before J in this flow
+        const flowCards=player===getHumanPlayer()?[...humanFlow]:G.aiFlowCards||[];
+        const jIdx=flowCards.indexOf(card);
+        const aBeforeJ=flowCards.slice(0,jIdx).some(c=>c&&CARDS[c]?.t==='A');
+        return '__J2_CHOOSE__:'+aBeforeJ;
+      }
+      else {
+        player.j2--;
+        const dirCW=((G.heafyPos-player.pos+n)%n),dirCCW=((player.pos-G.heafyPos+n)%n);
+        const d2=dirCW<=dirCCW?1:-1;
+        const steps=Math.min(2,dirCW<=dirCCW?dirCW:dirCCW);
+        const from=ROOMS[G.ro[player.pos]]?.name;
+        for(let i=0;i<steps;i++)player.pos=(player.pos+d2+n)%n;
+        return `${who} J2 ✨ +${steps} stanza${steps>1?'e':''}: ${from} → ${ROOMS[G.ro[player.pos]]?.icon} <strong>${ROOMS[G.ro[player.pos]]?.name}</strong> (rimaste: ${player.j2})`;
+      }
+    }
+  }
+  return '';
+}
+
+// ══════════════════════════════════════
+// AI INTERACT (unified logic)
+// ══════════════════════════════════════
+function execAIInteract(player){
+  player.interactedThisTurn=true;
+  const mood=getCurrentMood();
+  const who=`🤖 <span class="lai">${player.name}</span>`;
+
+  if(G.specialMood==='offesissimo')
+    return `${who} C1: Heafy Offesissimo — non accetta nulla`;
+
+  // Bisognoso: only paletta works
+  if(mood.id==='bisognoso'){
+    const idx=player.hand.indexOf('paletta');
+    if(idx>=0){
+      player.hand.splice(idx,1);player.pf+=3;
+      return `${who} dà 🪣 Paletta a Heafy Bisognoso → <span class="lp">+3 PF!</span> ✓`;
+    } else {
+      player.pf-=1;
+      // Heafy becomes Irrequieto — mid-turn mood change
+      const irreqIdx=G.mo.findIndex(i=>MOODS[i].id==='irrequieto');
+      if(irreqIdx>=0){G.moodIdx=irreqIdx;}
+      G.specialMood=null;
+      if(G.phase==="resolve")G.midTurnMoodChange=true;
+      return `${who} non ha la paletta → <span class="lw">−1 PF</span> • Heafy diventa 😤 Irrequieto!`;
+    }
+  }
+
+  // Arrabbiatissimo: vuole 2 risorse qualsiasi → +2 PF; nulla → -1 PF
+  if(G.specialMood==='arrabbiatissimo'){
+    let cnt=0,parts=[];
+    while(player.hand.length>0&&cnt<2){const r=player.hand.shift();cnt++;parts.push(RES[r]?.i+' '+RES[r]?.n);}
+    if(cnt>=2){
+      player.pf+=2;G.specialMood=null;G.arrabCounter=0;
+      return `${who} dà ${parts.join(', ')} → <span class="lp">+2 PF</span> 🔥 Arrabbiatissimo risolto!`;
+    } else if(cnt===1){
+      // Solo 1 risorsa: non basta, -1 PF
+      player.pf-=1;
+      return `${who} ha solo 1 risorsa — non basta → <span class="lw">−1 PF</span>`;
+    }
+    player.pf-=1;return `${who} niente da dare → <span class="lw">−1 PF</span>`;
+  }
+
+  // Mood con pretesa specifica
+  if(mood.p&&mood.p!=='any'){
+    if(player.hand.length===0){
+      player.pf-=1;G.specialMood='offesissimo';if(G.phase==="resolve")G.midTurnMoodChange=true;
+      return `${who} niente → <span class="lw">−1 PF</span> 😡 <strong>Offesissimo!</strong>`;}
+    const idx=player.hand.indexOf(mood.p);
+    if(idx>=0){
+      player.hand.splice(idx,1);player.pf+=2;
+      if(mood.id==='irrequieto')G.irreqSatisfied=true;
+      return `${who} dà ${RES[mood.p]?.i} ${RES[mood.p]?.n} ✓ → <span class="lp">+2 PF!</span>`;
+    } else {
+      const r=player.hand.shift();player.pf+=1;G.arrabCounter++;
+      let extra='';
+      if(G.arrabCounter>=3){G.specialMood='arrabbiatissimo';if(G.phase==="resolve")G.midTurnMoodChange=true;G.arrabCounter=0;extra=' 🔥 <strong>Arrabbiatissimo!</strong>';}
+      return `${who} dà ${RES[r]?.i} (sbagliato) → <span class="lp">+1 PF</span> ⚠ Arrab. ${G.arrabCounter}/3${extra}`;
+    }
+  }
+
+  // Mood senza pretesa (any or null)
+  if(!mood.p||mood.p==='any'){
+    if(player.hand.length>0){
+      const r=player.hand.shift();player.pf+=mood.p==='any'?2:1;
+      return `${who} dà ${RES[r]?.i} ${RES[r]?.n} → <span class="lp">+${mood.p==='any'?2:1} PF</span> (nessun counter)`;
+    }
+    player.pf-=1;
+    return `${who} niente → <span class="lw">−1 PF</span>`;
+  }
+  return `${who} C1: nessuna azione`;
+}
+
+// ══════════════════════════════════════
+// PASSIVE / FORCED INTERACT CHECK
+// ══════════════════════════════════════
+function checkOffeProximity(){
+  if(G.specialMood!=='offesissimo')return;
+  G.players.forEach(p=>{
+    if(p.pos===G.heafyPos){
+      p.pf-=2;
+      const who=p.isHuman?`👤 <span class="ly">${p.name}</span>`:`🤖 <span class="lai">${p.name}</span>`;
+      pushResolveMsg(`😡 Heafy Offesissimo nella stanza di ${who} → <span class="lw">−2 PF!</span>`,'sm-warn');
+    }
+  });
+}
+function checkRancor(){G.players.forEach(p=>{while(p.pf<0){p.pf++;p.rancor++;}});}
+function checkPeriodRecharge(){
+  const cur=getPeriod(G.turn),nxt=getPeriod(G.turn+1);
+  if(cur!==nxt&&G.turn<15){
+    // Only recharge rooms that are currently EMPTY
+    G.ro.forEach(ri=>{if(G.dr[ri])(G.rr[ri]=G.rr[ri]||[]).push(G.dr[ri]);});
+    pushResolveMsg(`🔄 Fine ${cur==='mattino'?'Mattino':'Pomeriggio'} — risorse aggiunte in tutte le stanze (anche quelle già occupate)`,'sm-heafy');
+  }
+}
+function advanceTurn(){
+  const p=getPeriod(G.turn);
+  if(p==='mattino'){
+    G.activePlayer=G.firstPlayer;
+  } else if(p==='pomeriggio'){
+    G.activePlayer=1-G.firstPlayer;
+  } else {
+    // Sera: chi ha meno PF; parità → random (simula dado)
+    const pf0=G.players[0].pf, pf1=G.players[1].pf;
+    if(pf0<pf1) G.activePlayer=0;
+    else if(pf1<pf0) G.activePlayer=1;
+    else G.activePlayer=Math.random()<0.5?0:1;
+  }
+}
+function pushResolveMsg(msg,cls){resolveSteps.splice(resolveIdx,0,{msg,cls,fn:null});}
+
+// ══════════════════════════════════════
+// RESOLVE PANEL + NEXT STEP
+// ══════════════════════════════════════
+function renderResolvePanel(el){
+  const displaySteps=resolveSteps.slice(0,resolveIdx).filter(s=>s.msg);
+  const isDone=resolveIdx>=resolveSteps.length;
+  el.innerHTML=`<div class="panel" style="padding:14px">
+    <div class="ptitle">⚡ Turno ${G.turn} — Risoluzione</div>
+    ${buildMoodWidget()}
+    ${!isDone?`<button class="btn-next-step" onclick="nextStep()" style="margin-bottom:10px">▶ Passo successivo</button>`:''}
+    <div class="logbox" id="logbox" style="max-height:none;margin-bottom:8px">${buildLogHTML()}</div>
+    <div id="rlog">${displaySteps.slice(-8).map(s=>`<div class="step-msg ${s.cls}">${s.msg}</div>`).join('')}</div>
+  </div>`;
+}
+
+function nextStep(){
+  if(resolveIdx>=resolveSteps.length)return;
+  const step=resolveSteps[resolveIdx];resolveIdx++;
+  let msg=step.msg;
+  if(step.fn){
+    const result=step.fn();
+    if(result===null){renderGame();renderFlowArea();return;}
+    if(result==='__INTERACT__'||result==='__INTERACT_PASSIVE__'||result==='__INTERACT_FORCED__'){
+      if(G.specialMood==='offesissimo'&&result==='__INTERACT_PASSIVE__'){
+        // Offesissimo just triggered — skip this interaction
+        renderGame();renderFlowArea();return;
+      }
+      getHumanPlayer().interactedThisTurn=true;
+      renderGame();
+      openInteractModal(getHumanPlayer(),result,()=>{renderGame();renderFlowArea();});
+      return;
+    }
+    if(result&&result.startsWith('__J2_CHOOSE__')){
+      const aFirst=result.split(':')[1]==='true';
+      renderGame();
+      openJ2Modal(getHumanPlayer(),()=>{renderGame();renderFlowArea();},aFirst);
+      return;
+    }
+
+    if(result==='__J2_OPTIONS__'||result==='__A_DEPOSIT_CHECK__'){
+      // Ask human if they want to deposit Heafy here
+      openDepositCheckModal(getHumanPlayer(),()=>{renderGame();renderFlowArea();});
+      return;
+    }
+    if(result==='__B1_PICK__'){
+      renderGame();
+      openB1PickModal(getHumanPlayer(),()=>{renderGame();renderFlowArea();});
+      return;
+    }
+    if(result==='__C1_ABANDON__'){
+      renderGame();
+      openAbandonModal(getHumanPlayer(),()=>{renderGame();renderFlowArea();});
+      return;
+    }
+    if(result)msg=result;
+  }
+  if(msg)addLog(msg,'');
+  renderGame();renderFlowArea();
+  setTimeout(()=>{const r=document.getElementById('rlog');if(r)r.scrollTop=r.scrollHeight;},50);
+}
+
+// ══════════════════════════════════════
+// INTERACT MODAL
+// ══════════════════════════════════════
+function openInteractModal(player, trigger, onDone){
+  const mood=getCurrentMood();
+  const isPretesaSpecifica=mood.p&&mood.p!=='any';
+  const isNoPretesa=!mood.p;
+  const isAny=mood.p==='any';
+  const isBisognoso=mood.id==='bisognoso';
+
+  const isArrab=G.specialMood==='arrabbiatissimo';
+  let pfInfo='';
+  if(isBisognoso) pfInfo=`+3 PF se dai 🪣 Paletta (UNICA risorsa accettata) &nbsp;|&nbsp; −1 PF + Irrequieto se nulla`;
+  else if(isArrab) pfInfo=`+2 PF se dai 2 risorse &nbsp;|&nbsp; −1 PF se nulla o solo 1 risorsa`;
+  else if(isPretesaSpecifica) pfInfo=`+2 PF risorsa giusta &nbsp;|&nbsp; +1 PF altra (⚠ Counter Arrab.) &nbsp;|&nbsp; −1 PF se nulla + Counter Offe.`;
+  else if(isAny) pfInfo=`+2 PF qualsiasi risorsa &nbsp;|&nbsp; −1 PF se nulla`;
+  else pfInfo=`+1 PF qualsiasi risorsa (no counter) &nbsp;|&nbsp; −1 PF se nulla`;
+
+  const pretTxt=isBisognoso?'🪣 Paletta (solo questa!)'
+    :isArrab?'2 risorse qualsiasi'
+    :isAny?'qualsiasi risorsa'
+    :mood.p?`${RES[mood.p]?.i} ${RES[mood.p]?.n}`:'Nessuna pretesa';
+  const maxPick=isArrab?2:1;
+
+  const body=document.getElementById('imodal-body');
+  const btns=document.getElementById('imodal-btns');
+  body.innerHTML=`
+    <div style="background:var(--bg-surface);border-radius:8px;padding:10px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.8rem">${mood.e}</span>
+      <div>
+        <div style="font-weight:700;font-size:.9rem">${mood.name}</div>
+        <div style="font-size:.75rem;color:var(--text-muted)">Pretesa: <strong>${pretTxt}</strong></div>
+        <div style="font-size:.7rem;color:var(--accent2)">${pfInfo}</div>
+      </div>
+    </div>
+    <div style="font-size:.8rem;margin-bottom:6px">Le tue risorse (seleziona ${maxPick===2?'fino a 2':'max 1'}):</div>
+    <div class="rpick-row" id="rpick">
+      ${player.hand.length===0
+        ?'<span style="font-size:.8rem;color:var(--text-muted)">Nessuna risorsa</span>'
+        :player.hand.map((r,i)=>`<button class="rpbtn ${isBisognoso&&r!=='paletta'?'':''}` +
+          `" id="rpb${i}" onclick="toggleRP(${i},${maxPick})" ${isBisognoso&&r!=='paletta'?'style="opacity:.4;cursor:not-allowed" disabled':''}>` +
+          `${RES[r]?.i} ${RES[r]?.n}</button>`).join('')}
+    </div>`;
+
+  let picked=[];
+  window.toggleRP=(i,maxPick)=>{
+    maxPick=maxPick||1;
+    const idx=picked.indexOf(i);
+    if(idx>=0) picked.splice(idx,1);
+    else{if(picked.length>=maxPick)picked.splice(0,1);picked.push(i);}
+    document.querySelectorAll('.rpbtn').forEach((b,bi)=>b.classList.toggle('picked',picked.includes(bi)));
+  };
+
+  btns.innerHTML='';
+  const passBtn=document.createElement('button');
+  passBtn.className='mbtn';passBtn.textContent='Non dare nulla';
+  passBtn.onclick=()=>{
+    closeIModal();
+    const who=`👤 <span class="ly">${player.name}</span>`;
+    let passMsg='';
+    if(isBisognoso){
+      player.pf-=1;
+      const irreqMoodIdx=G.mo.findIndex(idx=>MOODS[idx].id==='irrequieto');
+      if(irreqMoodIdx>=0){G.moodIdx=irreqMoodIdx;}
+      if(G.phase==="resolve")G.midTurnMoodChange=true;
+      passMsg=`${who} non ha la paletta → <span class="lw">−1 PF</span> • Heafy diventa 😤 Irrequieto!`;
+    } else if(isNoPretesa){
+      player.pf-=1;
+      passMsg=`${who} non dà nulla → <span class="lw">−1 PF</span>`;
+    } else {
+      // Mood con pretesa: nulla dato → diretto Offesissimo −1 PF
+      player.pf-=1;G.specialMood='offesissimo';if(G.phase==="resolve")G.midTurnMoodChange=true;
+      passMsg=`${who} non dà nulla → <span class="lw">−1 PF</span> 😡 <strong>Offesissimo!</strong>`;
+    }
+    addLog(passMsg,'');
+    resolveSteps.splice(resolveIdx,0,{msg:passMsg,cls:'sm-warn',fn:null});resolveIdx++;
+    renderGame();renderFlowArea();if(onDone)onDone();
+  };
+
+  const giveBtn=document.createElement('button');
+  giveBtn.className='mbtn mprimary';
+  giveBtn.textContent=G.specialMood==='arrabbiatissimo'?'Dai 2 risorse selezionate':'Dai risorsa selezionata';
+  giveBtn.onclick=()=>{
+    const isArrab2=G.specialMood==='arrabbiatissimo';
+    if(picked.length===0){showToast('Seleziona una risorsa o scegli "Non dare nulla"');return;}
+    if(isArrab2&&picked.length<2&&player.hand.length>=2){showToast('Arrabbiatissimo vuole 2 risorse!');return;}
+    closeIModal();
+    const who=`👤 <span class="ly">${player.name}</span>`;
+    let giveMsg='';
+
+    if(isArrab2){
+      // Remove picked resources (sort desc to avoid index shift)
+      const sortedPicked=[...picked].sort((a,b)=>b-a);
+      const given=sortedPicked.map(idx=>{const r=player.hand[idx];player.hand.splice(idx,1);return r;});
+      if(given.length>=2){
+        player.pf+=2;G.specialMood=null;G.arrabCounter=0;
+        giveMsg=`${who} dà ${given.map(r=>RES[r]?.i+' '+RES[r]?.n).join(', ')} → <span class="lp">+2 PF</span> 🔥 Arrabbiatissimo risolto!`;
+      } else {
+        player.pf-=1;
+        giveMsg=`${who} ha solo 1 risorsa — non basta → <span class="lw">−1 PF</span>`;
+      }
+    } else {
+      const idx=picked[0];
+      const r=player.hand[idx];
+      player.hand.splice(idx,1);
+
+      if(isBisognoso){
+        player.pf+=3;
+        giveMsg=`${who} dà 🪣 Paletta ✓ → <span class="lp">+3 PF!</span>`;
+      } else if(isAny){
+        player.pf+=2;
+        giveMsg=`${who} dà ${RES[r]?.i} ${RES[r]?.n} → <span class="lp">+2 PF</span> ✓`;
+      } else if(isNoPretesa){
+        player.pf+=1;
+        giveMsg=`${who} dà ${RES[r]?.i} ${RES[r]?.n} → <span class="lp">+1 PF</span> (nessun counter)`;
+      } else {
+        if(mood.p===r){
+          player.pf+=2;
+          if(mood.id==='irrequieto')G.irreqSatisfied=true;
+          giveMsg=`${who} dà ${RES[r]?.i} ${RES[r]?.n} ✓ → <span class="lp">+2 PF!</span>`;
+        } else {
+          player.pf+=1;G.arrabCounter++;
+          let extra='';
+          if(G.arrabCounter>=3){G.specialMood='arrabbiatissimo';if(G.phase==="resolve")G.midTurnMoodChange=true;G.arrabCounter=0;extra=' 🔥 <strong>Arrabbiatissimo!</strong>';}
+          giveMsg=`${who} dà ${RES[r]?.i} ${RES[r]?.n} (sbagliato) → <span class="lp">+1 PF</span> ⚠ Arrab. ${G.arrabCounter}/3${extra}`;
+        }
+      }
+    }
+    addLog(giveMsg,'');
+    resolveSteps.splice(resolveIdx,0,{msg:giveMsg,cls:'sm-you',fn:null});resolveIdx++;
+    renderGame();renderFlowArea();if(onDone)onDone();
+  };
+  btns.appendChild(passBtn);btns.appendChild(giveBtn);
+  document.getElementById('imodal').classList.add('open');
+}
+function toggleModalMin(){
+  const modal=document.getElementById('imodal');
+  const mini=document.getElementById('imodal-mini');
+  const btn=document.getElementById('imodal-min-btn');
+  if(modal.style.display==='none'){
+    // Reopen
+    modal.style.display='';
+    mini.style.display='none';
+    if(btn) btn.textContent='👁 Guarda';
+  } else {
+    // Minimize
+    modal.style.display='none';
+    mini.style.display='flex';
+    if(btn) btn.textContent='👁 Guarda';
+  }
+}
+
+function closeIModal(){
+  document.getElementById('imodal').classList.remove('open');
+  document.getElementById('imodal').style.display='';
+  const mini=document.getElementById('imodal-mini');
+  if(mini) mini.style.display='none';
+}
+
+// C1 without Heafy: abandon resource
+function openB1PickModal(player, onDone){
+  const ri=G.ro[player.pos];
+  const resArr=G.rr[ri]||[];
+  const curRoom=ROOMS[G.ro[player.pos]];
+  const body=document.getElementById('imodal-body');
+  const btns=document.getElementById('imodal-btns');
+  body.innerHTML=`
+    <div style="font-size:.85rem;margin-bottom:8px">🎒 <strong>B1 — Scegli cosa raccogliere</strong></div>
+    <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:10px">Stanza: ${curRoom.icon} ${curRoom.name} — ci sono più risorse</div>
+    <div class="rpick-row" id="rpick">
+      ${resArr.map((r,i)=>`<button class="rpbtn" id="rpb${i}" onclick="toggleRP(${i})">${RES[r]?.i} ${RES[r]?.n}</button>`).join('')}
+    </div>`;
+  let picked=[];
+  window.toggleRP=(i)=>{picked=[];picked.push(i);document.querySelectorAll('.rpbtn').forEach((b,bi)=>b.classList.toggle('picked',picked.includes(bi)));};
+  btns.innerHTML='';
+  const confirmBtn=document.createElement('button');
+  confirmBtn.className='mbtn mprimary';confirmBtn.textContent='Raccogli';
+  confirmBtn.onclick=()=>{
+    if(picked.length===0){showToast('Seleziona una risorsa');return;}
+    closeIModal();
+    const who=`👤 <span class="ly">${player.name}</span>`;
+    const r=resArr[picked[0]];
+    G.rr[ri]=resArr.filter((_,i)=>i!==picked[0]);
+    player.hand.push(r);
+    const msg=`${who} B1: raccoglie ${RES[r]?.i} <strong>${RES[r]?.n}</strong> in ${curRoom.icon} ${curRoom.name} ✓`;
+    addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-you',fn:null});resolveIdx++;
+    renderGame();renderFlowArea();if(onDone)onDone();
+  };
+  btns.appendChild(confirmBtn);
+  document.getElementById('imodal').classList.add('open');
+}
+
+function openAbandonModal(player, onDone){
+  const body=document.getElementById('imodal-body');
+  const btns=document.getElementById('imodal-btns');
+  body.innerHTML=`
+    <div style="font-size:.85rem;margin-bottom:10px">🏃 <strong>C1 senza Heafy</strong> — devi abbandonare una risorsa in questa stanza.</div>
+    <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:8px">Stanza: ${ROOMS[G.ro[player.pos]]?.icon} ${ROOMS[G.ro[player.pos]]?.name}</div>
+    <div class="rpick-row" id="rpick">
+      ${player.hand.length===0
+        ?'<span style="font-size:.8rem;color:var(--text-muted)">Nessuna risorsa da abbandonare — azione saltata</span>'
+        :player.hand.map((r,i)=>`<button class="rpbtn" id="rpb${i}" onclick="toggleRP(${i})">${RES[r]?.i} ${RES[r]?.n}</button>`).join('')}
+    </div>`;
+  let picked=[];
+  window.toggleRP=(i)=>{picked=[];picked.push(i);document.querySelectorAll('.rpbtn').forEach((b,bi)=>b.classList.toggle('picked',picked.includes(bi)));};
+  btns.innerHTML='';
+  const confirmBtn=document.createElement('button');
+  confirmBtn.className='mbtn mprimary';
+  confirmBtn.textContent=player.hand.length===0?'OK (nessuna risorsa)':'Abbandona risorsa';
+  confirmBtn.onclick=()=>{
+    const who=`👤 <span class="ly">${player.name}</span>`;
+    let abMsg='';
+    if(player.hand.length===0){
+      closeIModal();
+      abMsg=`${who} C1: Heafy non c'è, nessuna risorsa da abbandonare`;
+    } else if(picked.length===0){
+      showToast('Devi selezionare una risorsa da abbandonare!');
+      return; // don't close modal
+    } else {
+      closeIModal();
+      const r=player.hand[picked[0]];player.hand.splice(picked[0],1);
+      G.rr[G.ro[player.pos]]=(G.rr[G.ro[player.pos]]||[]).concat([r]);
+      abMsg=`${who} C1: Heafy non c'è — abbandona ${RES[r]?.i} ${RES[r]?.n} in ${ROOMS[G.ro[player.pos]]?.name}`;
+    }
+    addLog(abMsg,'');resolveSteps.splice(resolveIdx,0,{msg:abMsg,cls:'sm-you',fn:null});resolveIdx++;
+    renderGame();renderFlowArea();if(onDone)onDone();
+  };
+  btns.appendChild(confirmBtn);
+  document.getElementById('imodal').classList.add('open');
+}
+
+// ══════════════════════════════════════
+// J2 SEQUENCE BUILDER
+// ══════════════════════════════════════
+// j2Seq: array of actions built by player, e.g.:
+// {type:'move', steps:1, dir:1}
+// {type:'collect'}
+// {type:'pickup'}   — prendi Heafy
+// {type:'deposit'}  — deposita Heafy
+
+let j2Seq=[];
+let j2SimPos=0; // simulated position while building
+let j2SimCarry=false; // simulated "holding Heafy" while building
+
+function openJ2Modal(player, onDone, aAlreadyPlayed){
+  player.j2--;
+  window._j2Player=player;
+  window._j2OnDone=onDone;
+  window._j2AAlreadyPlayed=!!aAlreadyPlayed; // true if A was played before J in flow
+  // Choices: null=not decided, action obj=do it, {id:'skip'}=skip
+  window._j2Choices={move:null, collect:null, pickup:null, deposit:null};
+  window._j2Order=[]; // ordered list of decided actions (skip excluded)
+  window._j2SelAction=null;
+  renderJ2Builder();
+  document.getElementById('imodal').classList.add('open');
+}
+
+function renderJ2Builder(){
+  const player=window._j2Player;
+  const n=G.ro.length;
+  const body=document.getElementById('imodal-body');
+  const btns=document.getElementById('imodal-btns');
+  const ch=window._j2Choices;
+  const order=window._j2Order;
+  const sel=window._j2SelAction;
+  const aFirst=window._j2AAlreadyPlayed;
+
+  // Simulate pos/carry from ordered actions
+  let simPos=player.pos;
+  let simCarry=(G.heafyCarriedBy===player.id);
+  for(const a of order){
+    if(a.id==='move') for(let i=0;i<a.steps;i++) simPos=(simPos+a.dir+n)%n;
+    if(a.id==='pickup') simCarry=true;
+    if(a.id==='deposit') simCarry=false;
+  }
+  const heafyHere=simPos===G.heafyPos;
+  const res=(G.rr[G.ro[simPos]]||[]);
+  const hasRes=res.length>0;
+
+  // Deposita required if A already played and still carrying
+  const depositRequired=aFirst&&(simCarry||(G.heafyCarriedBy===player.id));
+
+  // Slots (actions chosen to DO, in order)
+  const slotsH=order.map((a,i)=>`
+    <div class="fslot filled fj" style="cursor:pointer" onclick="j2RemoveFromOrder(${i})">
+      <span class="fslot-n">${i+1}</span>
+      <span class="fslot-lbl" style="font-size:.6rem">${getJ2ActionIcon(a)}</span>
+      <span class="fslot-sub" style="font-size:.52rem">${getJ2ActionLabel(a)}</span>
+    </div>${i<order.length-1?'<span class="farrow">→</span>':''}
+  `).join('')||'<span style="font-size:.7rem;color:var(--text-muted);font-style:italic">Nessuna azione — tutto saltato</span>';
+
+  // Build available choice rows
+  const r1cw=(player.pos+1+n)%n,r1ccw=(player.pos-1+n)%n;
+  const r2cw=(player.pos+2+n)%n,r2ccw=(player.pos-2+n)%n;
+
+  const moveOpts=[
+    {id:'move',steps:1,dir:1, label:'↻ +1 Orario', sub:ROOMS[G.ro[r1cw]]?.icon+' '+ROOMS[G.ro[r1cw]]?.name},
+    {id:'move',steps:1,dir:-1,label:'↺ +1 Anti',   sub:ROOMS[G.ro[r1ccw]]?.icon+' '+ROOMS[G.ro[r1ccw]]?.name},
+    {id:'move',steps:2,dir:1, label:'↻↻ +2 Orario',sub:ROOMS[G.ro[r2cw]]?.icon+' '+ROOMS[G.ro[r2cw]]?.name},
+    {id:'move',steps:2,dir:-1,label:'↺↺ +2 Anti',  sub:ROOMS[G.ro[r2ccw]]?.icon+' '+ROOMS[G.ro[r2ccw]]?.name},
+  ];
+
+  function choiceRow(typeId, label, opts, skippable){
+    const decided=ch[typeId];
+    const inOrder=order.some(a=>a.id===typeId);
+    const isSkipped=decided&&decided.id==='skip';
+    if(inOrder) return `<div style="background:var(--bg-hover);border-radius:7px;padding:7px 10px;margin-bottom:5px;font-size:.74rem;display:flex;align-items:center;gap:6px">
+      ✅ <strong>${label}</strong> — in sequenza <button onclick="j2UnskipType('${typeId}')" style="margin-left:auto;font-size:.6rem;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer">✕ rimuovi</button></div>`;
+    if(isSkipped) return `<div style="background:var(--bg-surface);border-radius:7px;padding:7px 10px;margin-bottom:5px;font-size:.74rem;display:flex;align-items:center;gap:6px;opacity:.6">
+      ⏭️ <strong>${label}</strong> — saltato <button onclick="j2UnskipType('${typeId}')" style="margin-left:auto;font-size:.6rem;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer">↩ riprendi</button></div>`;
+    // Not decided yet
+    const optsH=opts.map(o=>{
+      const k=JSON.stringify(o);
+      const isSel=sel&&JSON.stringify(sel)===k;
+      return `<button class="copt ${isSel?'csel':''}" onclick="j2SelectAction('${encodeURIComponent(k)}')"
+        style="font-size:.66rem;padding:5px 7px;text-align:center;min-width:80px">
+        <div style="font-weight:600">${o.label}</div><div style="font-size:.55rem;opacity:.75">${o.sub||''}</div></button>`;
+    }).join('');
+    const skipBtn=skippable?`<button onclick="j2SkipType('${typeId}')" style="font-size:.62rem;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-muted);cursor:pointer">⏭️ Salta</button>`:'';
+    return `<div style="background:var(--bg-surface);border-radius:8px;padding:8px 10px;margin-bottom:6px">
+      <div style="font-size:.68rem;color:var(--accent);font-weight:700;margin-bottom:5px;text-transform:uppercase">${label}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">${optsH}${skipBtn}</div>
+    </div>`;
+  }
+
+  const moveDecided=ch.move||order.some(a=>a.id==='move');
+  const collectDecided=ch.collect||order.some(a=>a.id==='collect');
+  const pickupDecided=ch.pickup||order.some(a=>a.id==='pickup');
+  const depositDecided=ch.deposit||order.some(a=>a.id==='deposit');
+
+  const collectOpt=[{id:'collect',label:'🛡️ Raccogli sicuro',sub:'nella stanza attuale'}];
+  const pickupOpt=[{id:'pickup',label:'🐱 Prendi Heafy',sub:'portalo con te'}];
+  const depositOpt=[{id:'deposit',label:'📍 Deposita Heafy',sub:'lascialo qui'}];
+
+  // Always show all rows
+  const pendingRows=[];
+  if(!moveDecided) pendingRows.push(choiceRow('move','🏃 Spostamento',moveOpts,true));
+  if(!collectDecided) pendingRows.push(choiceRow('collect','🛡️ Raccogli sicuro',collectOpt,true));
+  if(!pickupDecided) pendingRows.push(choiceRow('pickup','🐱 Prendi Heafy',pickupOpt,true));
+  if(!depositDecided) pendingRows.push(choiceRow('deposit',depositRequired?'📍 Deposita Heafy (⚠️ OBBLIGATORIO)':'📍 Deposita Heafy',depositOpt,!depositRequired));
+
+  // All decided?
+  const allDecided=moveDecided&&collectDecided&&pickupDecided&&depositDecided;
+
+  // Validate: if deposit required and not in order
+  const depositMissing=depositRequired&&!order.some(a=>a.id==='deposit')&&(ch.deposit?.id==='skip'||!depositDecided);
+
+  body.innerHTML=`
+    <div style="font-size:.82rem;font-weight:700;margin-bottom:4px">✨ J2 Jolly</div>
+    <div style="font-size:.7rem;color:var(--text-muted);margin-bottom:8px">
+      📍 ${ROOMS[G.ro[player.pos]]?.icon} <strong>${ROOMS[G.ro[player.pos]]?.name}</strong>
+      ${(G.heafyCarriedBy===player.id)?' • 🐱 Heafy in braccio':heafyHere?' • 🐱 Heafy è qui':''}
+      ${hasRes?' • '+res.map(r=>RES[r]?.i).join(''):''}
+      ${aFirst?'<br><span style="color:var(--accent4);font-size:.65rem">⚠️ Carta A già giocata — devi depositare Heafy se ce l\'hai</span>':''}
+    </div>
+    <div style="font-size:.68rem;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Sequenza azioni:</div>
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:10px;flex-wrap:wrap;min-height:40px">${slotsH}</div>
+    ${pendingRows.join('')}
+    ${depositMissing?'<div style="color:var(--accent4);font-size:.72rem;margin-top:4px">⚠️ Devi depositare Heafy prima di confermare!</div>':''}`;
+
+  btns.innerHTML='';
+  const btn=document.createElement('button');
+  btn.className='mbtn mprimary';
+  const lastAct=order[order.length-1];
+  const pickupLast=lastAct?.id==='pickup';
+  btn.disabled=depositMissing||pickupLast||pendingRows.some(r=>typeof r==='string'&&r.includes('OBBLIGATORIO')&&!order.some(a=>a.id==='deposit'));
+  btn.textContent='▶ Esegui sequenza';
+  btn.onclick=()=>j2Execute();
+  btns.appendChild(btn);
+}
+
+window.j2SelectAction=(encoded)=>{
+  const a=JSON.parse(decodeURIComponent(encoded));
+  window._j2Choices[a.id]=a;
+  window._j2Order.push(a);
+  window._j2SelAction=null;
+  renderJ2Builder();
+};
+window.j2SkipType=(typeId)=>{
+  window._j2Choices[typeId]={id:'skip'};
+  renderJ2Builder();
+};
+window.j2UnskipType=(typeId)=>{
+  window._j2Choices[typeId]=null;
+  window._j2Order=window._j2Order.filter(a=>a.id!==typeId);
+  renderJ2Builder();
+};
+window.j2RemoveFromOrder=(i)=>{
+  const a=window._j2Order.splice(i,1)[0];
+  window._j2Choices[a.id]=null;
+  renderJ2Builder();
+};
+
+function getJ2ActionIcon(a){
+  if(a.id==='move') return a.dir>0?'↻':'↺';
+  if(a.id==='collect') return '🛡️';
+  if(a.id==='pickup') return '🐱';
+  if(a.id==='deposit') return '📍';
+  return '?';
+}
+function getJ2ActionLabel(a){
+  if(a.id==='move') return (a.dir>0?'Or.':'Anti')+'×'+a.steps;
+  if(a.id==='collect') return 'Raccogli';
+  if(a.id==='pickup') return 'Prendi🐱';
+  if(a.id==='deposit') return 'Deposita';
+  return '';
+}
+
+function j2Execute(){
+  const order=window._j2Order;
+  const lastAct=order[order.length-1];
+  if(lastAct?.id==='pickup'){showToast('Prendi Heafy non può essere ultima azione!');return;}
+  closeIModal();
+  const player=window._j2Player;
+  const n=G.ro.length;
+  const who=`👤 <span class="ly">${player.name}</span>`;
+
+  for(const a of order){
+    if(a.id==='move'){
+      const from=ROOMS[G.ro[player.pos]]?.name;
+      for(let i=0;i<a.steps;i++) player.pos=(player.pos+a.dir+n)%n;
+      if(G.heafyCarriedBy===player.id) G.heafyPos=player.pos;
+      const carry=G.heafyCarriedBy===player.id?' (🐱)':'';
+      const msg=`${who} J2 ${a.dir>0?'↻':'↺'}×${a.steps}${carry}: ${from} → ${ROOMS[G.ro[player.pos]]?.icon} <strong>${ROOMS[G.ro[player.pos]]?.name}</strong>`;
+      addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-you',fn:null});resolveIdx++;
+    } else if(a.id==='collect'){
+      const ri=G.ro[player.pos];const resArr=G.rr[ri]||[];
+      if(resArr.length===0){
+        const msg=`${who} J2 🛡️ raccoglie — nessuna risorsa qui, azione saltata`;
+        addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-warn',fn:null});resolveIdx++;
+      } else if(player.hand.length>=2){
+        const msg=`${who} J2 🛡️ raccoglie — mano piena (${2}), azione saltata`;
+        addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-warn',fn:null});resolveIdx++;
+      } else {
+        const r=resArr[0];G.rr[ri]=resArr.slice(1);player.hand.push(r);
+        const msg=`${who} J2 🛡️ raccoglie sicuro ${RES[r]?.i} ${RES[r]?.n}`;
+        addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-you',fn:null});resolveIdx++;
+      }
+    } else if(a.id==='pickup'){
+      if(player.pos!==G.heafyPos){
+        const msg=`${who} J2 🐱 prende Heafy — non è qui, azione saltata`;
+        addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-warn',fn:null});resolveIdx++;
+      } else if(G.heafyCarriedBy===player.id){
+        const msg=`${who} J2 🐱 Heafy già in braccio, azione saltata`;
+        addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-warn',fn:null});resolveIdx++;
+      } else {
+        G.heafyCarriedBy=player.id;
+        const msg=`${who} J2 🐱 prende Heafy in braccio`;
+        addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-you',fn:null});resolveIdx++;
+      }
+    } else if(a.id==='deposit'){
+      if(G.heafyCarriedBy!==player.id){
+        const msg=`${who} J2 📍 deposita — non hai Heafy, azione saltata`;
+        addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-warn',fn:null});resolveIdx++;
+      } else {
+        G.heafyCarriedBy=null;G.heafyPos=player.pos;
+        const msg=`${who} J2 📍 deposita Heafy in ${ROOMS[G.ro[player.pos]]?.icon} <strong>${ROOMS[G.ro[player.pos]]?.name}</strong>`;
+        addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-you',fn:null});resolveIdx++;
+      }
+    }
+  }
+  const icons=order.map(a=>getJ2ActionIcon(a)).join('→')||'nessuna';
+  addLog(`${who} J2 ✨ ${icons} (rimaste: ${player.j2})`,'');
+
+  // If still carrying Heafy and A not yet played, ask deposit at A movement
+  if(G.heafyCarriedBy===player.id&&!window._j2AAlreadyPlayed){
+    resolveSteps.splice(resolveIdx,0,{msg:'',cls:'sm-you',fn:()=>'__A_DEPOSIT_CHECK__'});
+  }
+
+  renderGame();renderFlowArea();
+  if(window._j2OnDone)window._j2OnDone();
+}
+
+
+
+function showDiceAnimation(tb, winner, onDone){
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px';
+  const p0=G.players[0],p1=G.players[1];
+  overlay.innerHTML=`
+    <div style="font-size:1rem;color:#f0e6d3;font-weight:700;margin-bottom:4px">🎲 Distanza pari! Il numero più alto viene attirato!</div>
+    <div style="display:flex;gap:24px;align-items:center">
+      <div style="text-align:center">
+        <div style="font-size:.75rem;color:#a8917a;margin-bottom:6px">${p0.isHuman?'👤':'🤖'} ${p0.name}</div>
+        <div id="dice-p0" style="font-size:3rem;width:64px;height:64px;background:#2b1e0e;border:2px solid #c8956c;border-radius:12px;display:flex;align-items:center;justify-content:center">⚀</div>
+      </div>
+      <div style="font-size:1.4rem;color:#c8956c">VS</div>
+      <div style="text-align:center">
+        <div style="font-size:.75rem;color:#a8917a;margin-bottom:6px">${p1.isHuman?'👤':'🤖'} ${p1.name}</div>
+        <div id="dice-p1" style="font-size:3rem;width:64px;height:64px;background:#2b1e0e;border:2px solid #c8956c;border-radius:12px;display:flex;align-items:center;justify-content:center">⚀</div>
+      </div>
+    </div>
+    <div id="dice-result" style="font-size:.9rem;color:#f0e6d3;margin-top:8px;min-height:24px"></div>`;
+  document.body.appendChild(overlay);
+  const faces=['⚀','⚁','⚂','⚃','⚄','⚅'];
+  let count=0;
+  const interval=setInterval(()=>{
+    const d0=document.getElementById('dice-p0');
+    const d1=document.getElementById('dice-p1');
+    if(d0) d0.textContent=faces[Math.floor(Math.random()*6)];
+    if(d1) d1.textContent=faces[Math.floor(Math.random()*6)];
+    count++;
+    if(count>=20){
+      clearInterval(interval);
+      const d0f=document.getElementById('dice-p0');
+      const d1f=document.getElementById('dice-p1');
+      const res=document.getElementById('dice-result');
+      if(d0f) d0f.textContent=faces[tb.p0roll-1];
+      if(d1f) d1f.textContent=faces[tb.p1roll-1];
+      const winnerIsP0=winner.id===p0.id;
+      if(winnerIsP0){if(d0f)d0f.style.border='3px solid #7db87a';if(d1f)d1f.style.opacity='.4';}
+      else{if(d1f)d1f.style.border='3px solid #7db87a';if(d0f)d0f.style.opacity='.4';}
+      const wname=winner.isHuman?`👤 ${winner.name}`:`🤖 ${winner.name}`;
+      const wscore=winnerIsP0?tb.p0roll:tb.p1roll;
+      if(res) res.innerHTML=`<strong style="color:#7db87a">${wname} (${wscore})</strong> viene attirato da Heafy!`;
+      setTimeout(()=>{overlay.remove();if(onDone)onDone();else{renderGame();renderFlowArea();}},2000);
+    }
+  },80);
+}
+
+
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const saved=checkSavedGame();
+  if(saved){
+    const wrap=document.getElementById('resume-wrap');
+    const turnEl=document.getElementById('resume-turn');
+    if(wrap){wrap.style.display='block';}
+    if(turnEl){turnEl.textContent=saved.turn;}
+  }
+});
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  if(id==='game'&&G&&G.phase==='build') renderFlowArea();
+}
+
+let _toastT;
+function showToast(msg){
+  const el=document.getElementById('toast');
+  if(!el) return;
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(_toastT);_toastT=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+function addLog(msg,cls){
+  if(!G||!G.log) return;
+  G.log.unshift({msg,cls});
+  const el=document.getElementById('logbox');
+  if(!el) return;
+  el.innerHTML=buildLogHTML();
+  el.scrollTop=0;
+}
+
+function rAcc(btn){
+  const b=btn.nextElementSibling;
+  const o=btn.classList.toggle('open');
+  b.classList.toggle('open',o);
+}
+
+function toggleMoodTooltip(){
+  const el=document.getElementById('mood-tooltip');
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function toggleMoodQ(i){
+  const el=document.getElementById('mqtip-'+i);
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function getMoodTooltip(id){
+  const tips={
+    affamato:`<strong>🐾 Effetto:</strong> Va in Cucina 🍳<br><strong>💰 PF:</strong> +2 Snack 🍬 • +1 altra (⚠ Arrab.) • −1 nulla + Offe.`,
+    assonnato:`<strong>🐾 Effetto:</strong> Rimane fermo<br><strong>💰 PF:</strong> +2 Cuscino 🛏 • +1 altra (⚠ Arrab.) • −1 nulla + Offe.`,
+    curioso:`<strong>🐾 Effetto:</strong> Esplora fino a una stanza con risorse<br><strong>💰 PF:</strong> +1 qualsiasi (no counter) • −1 nulla`,
+    coccolone:`<strong>🐾 Effetto:</strong> Rimane fermo • +1 PF se entri da lui<br><strong>💰 PF:</strong> +2 Coccola 🤗 • +1 altra (⚠ Arrab.) • −1 nulla + Offe.`,
+    giocherellone:`<strong>🐾 Effetto:</strong> 1 stanza, sequestra risorsa<br><strong>💰 PF:</strong> +2 Giochino 🎾 • +1 altra (⚠ Arrab.) • −1 nulla + Offe.`,
+    irrequieto:`<strong>🐾 Effetto:</strong> 1 stanza • Se non soddisfatto: inverte direzione<br><strong>💰 PF:</strong> +2 qualsiasi ✓ • −1 nulla + direzione invertita`,
+    neutro:`<strong>🐾 Effetto:</strong> 1 stanza<br><strong>💰 PF:</strong> +1 qualsiasi (no counter) • −1 nulla`,
+    bisognoso:`<strong>🐾 Effetto:</strong> Va in Bagno 🚿, attira il giocatore più vicino<br><strong>💰 PF:</strong> +3 SOLO Paletta 🪣 • −1 nulla → diventa Irrequieto!`,
+    iperattivo:`<strong>🐾 Effetto:</strong> 2 stanze<br><strong>💰 PF:</strong> +1 qualsiasi (no counter) • −1 nulla`,
+    dispettoso:`<strong>🐾 Effetto:</strong> 1 stanza, rimuove risorsa dal gioco<br><strong>💰 PF:</strong> +1 qualsiasi (no counter) • −1 nulla`,
+    offesissimo:`<strong>🐾 Effetto:</strong> 1 stanza — non accetta NULLA 😡<br>−2 PF se finisce nella tua stanza`,
+    arrabbiatissimo:`<strong>🐾 Effetto:</strong> Fermo 🔥 — vuole 2 risorse qualsiasi<br><strong>💰 PF:</strong> +2 se dai 2 risorse • −1 nulla`,
+  };
+  return tips[id]||'Nessun dettaglio';
+}
+
+
+function endGame(){
+  G.gameOver=true;G.phase='done';
+  G.players.forEach(p=>{p.pf-=p.rancor;});
+  const sorted=[...G.players].sort((a,b)=>b.pf-a.pf);
+  const w=sorted[0];
+  document.getElementById('emsg').textContent=
+    w.pf===sorted[1].pf?'Pareggio! Heafy dorme su entrambi 😺':`${w.name} vince con ${w.pf} PF! 🐱`;
+  document.getElementById('escores').innerHTML=sorted.map((p,i)=>
+    `<li class="${i===0?'winner':''}">${i===0?'🏆 ':''} ${p.isHuman?'👤':'🤖'} ${p.name}: ${p.pf} PF${p.rancor>0?` (−${p.rancor} rancore)`:''}</li>`
+  ).join('');
+  addLog(`🏁 Fine! Vince <strong>${w.name}</strong> con ${w.pf} PF`,'lp');
+  document.getElementById('eoverlay').classList.add('open');
+  renderGame();
+}
+
+function openDepositCheckModal(player, onDone){
+  const body=document.getElementById('imodal-body');
+  const btns=document.getElementById('imodal-btns');
+  const curRoom=ROOMS[G.ro[player.pos]];
+  body.innerHTML=`
+    <div style="font-size:.85rem;margin-bottom:8px">🐱 Hai Heafy in braccio!</div>
+    <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px">Sei in <strong>${curRoom.icon} ${curRoom.name}</strong> — depositi Heafy qui o continui?</div>`;
+  btns.innerHTML='';
+  const d=document.createElement('button');d.className='mbtn mprimary';d.textContent='📍 Deposita Heafy qui';
+  d.onclick=()=>{closeIModal();G.heafyCarriedBy=null;G.heafyPos=player.pos;
+    const who=player.isHuman?`👤 <span class="ly">${player.name}</span>`:`🤖 <span class="lai">${player.name}</span>`;
+    const msg=`${who} 📍 deposita Heafy in ${curRoom.icon} <strong>${curRoom.name}</strong>`;
+    addLog(msg,'');resolveSteps.splice(resolveIdx,0,{msg,cls:'sm-you',fn:null});resolveIdx++;
+    renderGame();renderFlowArea();if(onDone)onDone();};
+  const k=document.createElement('button');k.className='mbtn';k.textContent='🐱 Continua a portarlo';
+  k.onclick=()=>{closeIModal();renderGame();renderFlowArea();if(onDone)onDone();};
+  btns.appendChild(d);btns.appendChild(k);
+  document.getElementById('imodal').classList.add('open');
+}
+
+</script>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    const sw=`
+const CACHE='fifo-fafo-v1';
+const FILES=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)));self.skipWaiting();});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
+self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));});
+`;
+    const blob=new Blob([sw],{type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
